@@ -42,8 +42,8 @@ func (e *AppError) Unwrap() error {
 	return e.Cause
 }
 
-func New(code ErrorCode, message string) *AppError {
-	return &AppError{Code: code, Message: message, Details: make(map[string]any)}
+func New(code ErrorCode) *AppError {
+	return &AppError{Code: code, Message: string(code), Details: make(map[string]any)}
 }
 
 func Wrap(code ErrorCode, message string, cause error) *AppError {

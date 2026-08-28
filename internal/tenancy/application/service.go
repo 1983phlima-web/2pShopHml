@@ -2,7 +2,6 @@ package application
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/2pshop/2pshop/internal/tenancy/domain"
 	"github.com/2pshop/2pshop/internal/tenancy/ports"

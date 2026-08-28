@@ -2,7 +2,6 @@ package postgres
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/2pshop/2pshop/internal/platform"
 	"github.com/2pshop/2pshop/internal/tenancy/domain"
