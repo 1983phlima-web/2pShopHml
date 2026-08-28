@@ -1,6 +1,21 @@
 version: "3.9"
 
 services:
+  web:
+    build:
+      context: ./web
+      dockerfile: Dockerfile
+    ports:
+      - "3000:3000"
+    environment:
+      - NEXT_PUBLIC_API_URL=http://localhost:8080
+      - NEXT_PUBLIC_OTEL_URL=http://otel-collector:4318/v1/traces
+      - NEXT_PUBLIC_TENANT_ID=tenant_01
+    depends_on:
+      - api
+    networks:
+      - 2pshop
+
   api:
     build:
       context: .
@@ -127,7 +142,7 @@ services:
   grafana:
     image: grafana/grafana:11.2.0
     ports:
-      - "3000:3000"
+      - "3001:3000"
     environment:
       - GF_SECURITY_ADMIN_PASSWORD=admin
     volumes:
