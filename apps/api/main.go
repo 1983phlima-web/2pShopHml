@@ -9,26 +9,14 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/2pshop/2pshop/internal/catalog/adapters/postgres"
-	catalogApp "github.com/2pshop/2pshop/internal/catalog/application"
-	catalogHTTP "github.com/2pshop/2pshop/internal/catalog/transport/http"
-	"github.com/2pshop/2pshop/internal/checkout/application"
-	"github.com/2pshop/2pshop/internal/identity/application"
-	identityHTTP "github.com/2pshop/2pshop/internal/identity/transport/http"
-	"github.com/2pshop/2pshop/internal/inventory/application"
-	"github.com/2pshop/2pshop/internal/orders/application"
-	"github.com/2pshop/2pshop/internal/payments/application"
 	"github.com/2pshop/2pshop/internal/platform"
-	"github.com/2pshop/2pshop/internal/tenancy/adapters/postgres"
-	"github.com/2pshop/2pshop/internal/tenancy/application"
-	"github.com/2pshop/2pshop/internal/tenancy/transport/http"
-	"github.com/2pshop/2pshop/pkg/idempotency"
+	tenancyPG "github.com/2pshop/2pshop/internal/tenancy/adapters/postgres"
+	tenancyApp "github.com/2pshop/2pshop/internal/tenancy/application"
+	tenancyHTTP "github.com/2pshop/2pshop/internal/tenancy/transport/http"
 	"github.com/2pshop/2pshop/pkg/telemetry"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/go-chi/cors"
-	"github.com/redis/go-redis/v9"
-	"go.opentelemetry.io/otel/trace"
 	"go.uber.org/zap"
 )
 
@@ -71,34 +59,11 @@ func main() {
 	}
 	defer db.Close()
 
-	// Redis
-	opt, err := redis.ParseURL(cfg.RedisURL)
-	if err != nil {
-		logger.Fatal("failed to parse redis url", zap.Error(err))
-	}
-	redisClient := redis.NewClient(opt)
-	defer redisClient.Close()
-
 	// Repositories
-	tenancyRepo := tenancyPostgres.NewRepository(db)
-	catalogRepo := catalogPostgres.NewRepository(db)
+	tenancyRepo := tenancyPG.NewRepository(db)
 
 	// Services
 	tenancyService := tenancyApp.NewService(tenancyRepo)
-	catalogService := catalogApp.NewService(catalogRepo, nil)
-	inventoryService := inventoryApp.NewService(nil) // TODO: implement repository
-	orderService := ordersApp.NewService(nil, nil)   // TODO: implement repository
-	paymentService := paymentsApp.NewService(nil)    // TODO: implement providers
-	idempotencyManager := idempotency.NewManager(idempotency.NewRedisStore(redisClient, 24*time.Hour))
-
-	checkoutService := checkoutApp.NewService(
-		catalogRepo,
-		inventoryService,
-		orderService,
-		paymentService,
-		idempotencyManager,
-		tel.Tracer("checkout"),
-	)
 
 	// HTTP Metrics
 	httpMetrics, _ := telemetry.NewHTTPMetrics(tel.MeterProvider.Meter("http"))
@@ -130,7 +95,9 @@ func main() {
 		fmt.Fprintf(w, `{"version":"%s","build_time":"%s","git_commit":"%s"}`+"\n", version, buildTime, gitCommit)
 	})
 
-	// API v1
+	// API v1 - only tenancy is wired for this deployment.
+	// catalog/identity/inventory/orders/checkout/payments transport & postgres
+	// adapters are not yet present in this package and will be wired once available.
 	r.Route("/api/v1", func(r chi.Router) {
 		r.Use(func(next http.Handler) http.Handler {
 			return telemetry.InstrumentHandler(next, httpMetrics, "api")
@@ -139,16 +106,6 @@ func main() {
 		// Tenancy
 		tenancyHandler := tenancyHTTP.NewHandler(tenancyService)
 		tenancyHandler.Routes(r)
-
-		// Catalog
-		catalogHandler := catalogHTTP.NewHandler(catalogService)
-		catalogHandler.Routes(r)
-
-		// Checkout
-		r.Post("/checkout", func(w http.ResponseWriter, r *http.Request) {
-			// TODO: implement checkout handler
-			w.WriteHeader(http.StatusNotImplemented)
-		})
 	})
 
 	// Server
