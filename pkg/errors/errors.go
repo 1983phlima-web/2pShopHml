@@ -8,27 +8,27 @@ import (
 type ErrorCode string
 
 const (
-	ErrInternal           ErrorCode = "INTERNAL_ERROR"
-	ErrInvalidInput       ErrorCode = "INVALID_INPUT"
-	ErrNotFound           ErrorCode = "NOT_FOUND"
-	ErrUnauthorized       ErrorCode = "UNAUTHORIZED"
-	ErrForbidden          ErrorCode = "FORBIDDEN"
-	ErrConflict           ErrorCode = "CONFLICT"
-	ErrIdempotency        ErrorCode = "IDEMPOTENCY_CONFLICT"
+	ErrInternal             ErrorCode = "INTERNAL_ERROR"
+	ErrInvalidInput         ErrorCode = "INVALID_INPUT"
+	ErrNotFound             ErrorCode = "NOT_FOUND"
+	ErrUnauthorized         ErrorCode = "UNAUTHORIZED"
+	ErrForbidden            ErrorCode = "FORBIDDEN"
+	ErrConflict             ErrorCode = "CONFLICT"
+	ErrIdempotency          ErrorCode = "IDEMPOTENCY_CONFLICT"
 	ErrInventoryUnavailable ErrorCode = "INVENTORY_UNAVAILABLE"
-	ErrPaymentDeclined    ErrorCode = "PAYMENT_DECLINED"
-	ErrPaymentTimeout     ErrorCode = "PAYMENT_TIMEOUT"
-	ErrTenantSuspended    ErrorCode = "TENANT_SUSPENDED"
-	ErrRateLimit          ErrorCode = "RATE_LIMIT_EXCEEDED"
+	ErrPaymentDeclined      ErrorCode = "PAYMENT_DECLINED"
+	ErrPaymentTimeout       ErrorCode = "PAYMENT_TIMEOUT"
+	ErrTenantSuspended      ErrorCode = "TENANT_SUSPENDED"
+	ErrRateLimit            ErrorCode = "RATE_LIMIT_EXCEEDED"
 )
 
 type AppError struct {
-	Code    ErrorCode `json:"code"`
-	Message string    `json:"message"`
-	TraceID string    `json:"trace_id,omitempty"`
+	Code    ErrorCode      `json:"code"`
+	Message string         `json:"message"`
+	TraceID string         `json:"trace_id,omitempty"`
 	Details map[string]any `json:"details,omitempty"`
-	Status  int       `json:"-"`
-	Cause   error     `json:"-"`
+	Status  int            `json:"-"`
+	Cause   error          `json:"-"`
 }
 
 func (e *AppError) Error() string {
@@ -50,22 +50,19 @@ func Wrap(code ErrorCode, message string, cause error) *AppError {
 	return &AppError{Code: code, Message: message, Cause: cause, Details: make(map[string]any)}
 }
 
-func WithTraceID(err *AppError, traceID string) *AppError {
-	err.TraceID = traceID
-	return err
+func (e *AppError) WithTraceID(traceID string) *AppError {
+	e.TraceID = traceID
+	return e
 }
 
-func WithDetail(err *AppError, key string, value any) *AppError {
-	err.Details[key] = value
-	return err
+func (e *AppError) WithDetail(key string, value any) *AppError {
+	e.Details[key] = value
+	return e
 }
 
 func HTTPStatus(err error) int {
 	if err == nil {
 		return http.StatusOK
-	}
-	var appErr *AppError
-	if ok := fmt.Sscanf("", "", &ok); ok { // placeholder
 	}
 	if ae, ok := err.(*AppError); ok {
 		if ae.Status != 0 {
