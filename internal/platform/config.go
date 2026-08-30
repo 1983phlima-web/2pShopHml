@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"strconv"
+	"strings"
 	"time"
 )
 
@@ -35,7 +36,7 @@ func LoadConfig() (*Config, error) {
 		KafkaBrokers: getEnv("KAFKA_BROKERS", ""),
 		JWTSecret:    getEnv("JWT_SECRET", "2pshop-hml-default-secret-change-me"),
 		OTEL: OTELConfig{
-			Endpoint:       getEnv("OTEL_EXPORTER_OTLP_ENDPOINT", "localhost:4317"),
+			Endpoint:       stripScheme(getEnv("OTEL_EXPORTER_OTLP_ENDPOINT", "localhost:4317")),
 			ServiceName:    getEnv("OTEL_SERVICE_NAME", "2pshop"),
 			ServiceVersion: getEnv("OTEL_SERVICE_VERSION", "dev"),
 			Environment:    getEnv("APP_ENV", "development"),
@@ -56,6 +57,14 @@ func getEnv(key, defaultVal string) string {
 		return v
 	}
 	return defaultVal
+}
+
+// stripScheme removes a leading http:// or https:// from an endpoint,
+// since OTLP gRPC exporters expect a bare host:port.
+func stripScheme(endpoint string) string {
+	endpoint = strings.TrimPrefix(endpoint, "https://")
+	endpoint = strings.TrimPrefix(endpoint, "http://")
+	return endpoint
 }
 
 func getEnvFloat(key string, defaultVal float64) float64 {
