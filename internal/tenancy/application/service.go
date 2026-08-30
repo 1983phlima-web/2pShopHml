@@ -43,6 +43,17 @@ func (s *Service) GetTenant(ctx context.Context, id string) (*domain.Tenant, err
 	return tenant, nil
 }
 
+func (s *Service) GetTenantBySlug(ctx context.Context, slug string) (*domain.Tenant, error) {
+	tenant, err := s.repo.GetBySlug(ctx, slug)
+	if err != nil {
+		return nil, errors.Wrap(errors.ErrInternal, "failed to get tenant by slug", err)
+	}
+	if tenant == nil {
+		return nil, errors.New(errors.ErrNotFound).WithDetail("resource", "tenant")
+	}
+	return tenant, nil
+}
+
 func (s *Service) ValidateTenant(ctx context.Context, tenantID string) error {
 	tenant, err := s.repo.GetByID(ctx, tenantID)
 	if err != nil {

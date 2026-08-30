@@ -9,14 +9,46 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/2pshop/2pshop/internal/platform"
+	checkoutApp "github.com/2pshop/2pshop/internal/checkout/application"
+	checkoutHTTP "github.com/2pshop/2pshop/internal/checkout/transport/http"
+
+	catalogPG "github.com/2pshop/2pshop/internal/catalog/adapters/postgres"
+	catalogApp "github.com/2pshop/2pshop/internal/catalog/application"
+	catalogHTTP "github.com/2pshop/2pshop/internal/catalog/transport/http"
+
+	identityJWT "github.com/2pshop/2pshop/internal/identity/adapters/jwt"
+	identityPG "github.com/2pshop/2pshop/internal/identity/adapters/postgres"
+	identityApp "github.com/2pshop/2pshop/internal/identity/application"
+	identityHTTP "github.com/2pshop/2pshop/internal/identity/transport/http"
+
+	inventoryPG "github.com/2pshop/2pshop/internal/inventory/adapters/postgres"
+	inventoryApp "github.com/2pshop/2pshop/internal/inventory/application"
+
+	ordersPG "github.com/2pshop/2pshop/internal/orders/adapters/postgres"
+	ordersApp "github.com/2pshop/2pshop/internal/orders/application"
+	ordersHTTP "github.com/2pshop/2pshop/internal/orders/transport/http"
+
+	paymentsMock "github.com/2pshop/2pshop/internal/payments/adapters/mock"
+	paymentsApp "github.com/2pshop/2pshop/internal/payments/application"
+	paymentsDomain "github.com/2pshop/2pshop/internal/payments/domain"
+
+	reviewsPG "github.com/2pshop/2pshop/internal/reviews/adapters/postgres"
+	reviewsApp "github.com/2pshop/2pshop/internal/reviews/application"
+	reviewsHTTP "github.com/2pshop/2pshop/internal/reviews/transport/http"
+
 	tenancyPG "github.com/2pshop/2pshop/internal/tenancy/adapters/postgres"
 	tenancyApp "github.com/2pshop/2pshop/internal/tenancy/application"
 	tenancyHTTP "github.com/2pshop/2pshop/internal/tenancy/transport/http"
+
+	"github.com/2pshop/2pshop/internal/platform"
+	"github.com/2pshop/2pshop/internal/platform/httpmw"
+	"github.com/2pshop/2pshop/pkg/idempotency"
 	"github.com/2pshop/2pshop/pkg/telemetry"
+
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/go-chi/cors"
+	"github.com/redis/go-redis/v9"
 	"go.uber.org/zap"
 )
 
@@ -59,11 +91,50 @@ func main() {
 	}
 	defer db.Close()
 
+	// Migrations run automatically on every boot (idempotent).
+	if err := platform.RunMigrations(context.Background(), db); err != nil {
+		logger.Fatal("failed to run migrations", zap.Error(err))
+	}
+
+	// Redis (idempotency store for checkout)
+	var idempotencyManager *idempotency.Manager
+	if cfg.RedisURL != "" {
+		opt, err := redis.ParseURL(cfg.RedisURL)
+		if err != nil {
+			logger.Fatal("failed to parse redis url", zap.Error(err))
+		}
+		redisClient := redis.NewClient(opt)
+		defer redisClient.Close()
+		idempotencyManager = idempotency.NewManager(idempotency.NewRedisStore(redisClient, 24*time.Hour))
+	}
+
 	// Repositories
 	tenancyRepo := tenancyPG.NewRepository(db)
+	identityRepo := identityPG.NewRepository(db)
+	catalogRepo := catalogPG.NewRepository(db)
+	reviewsRepo := reviewsPG.NewRepository(db)
+	inventoryRepo := inventoryPG.NewRepository(db)
+	ordersRepo := ordersPG.NewRepository(db)
 
 	// Services
 	tenancyService := tenancyApp.NewService(tenancyRepo)
+	tokenService := identityJWT.NewTokenService(cfg.JWTSecret, 24*time.Hour)
+	identityService := identityApp.NewService(identityRepo, tokenService)
+	catalogService := catalogApp.NewService(catalogRepo, nil)
+	reviewsService := reviewsApp.NewService(reviewsRepo)
+	inventoryService := inventoryApp.NewService(inventoryRepo)
+	ordersService := ordersApp.NewService(ordersRepo, nil)
+	paymentsService := paymentsApp.NewService(map[string]paymentsDomain.Provider{
+		"stripe": paymentsMock.New(), // sandbox provider for HML; swap for a real Stripe adapter in production.
+	})
+	checkoutService := checkoutApp.NewService(
+		catalogRepo,
+		inventoryService,
+		ordersService,
+		paymentsService,
+		idempotencyManager,
+		tel.Tracer("checkout"),
+	)
 
 	// HTTP Metrics
 	httpMetrics, _ := telemetry.NewHTTPMetrics(tel.MeterProvider.Meter("http"))
@@ -95,17 +166,53 @@ func main() {
 		fmt.Fprintf(w, `{"version":"%s","build_time":"%s","git_commit":"%s"}`+"\n", version, buildTime, gitCommit)
 	})
 
-	// API v1 - only tenancy is wired for this deployment.
-	// catalog/identity/inventory/orders/checkout/payments transport & postgres
-	// adapters are not yet present in this package and will be wired once available.
+	tenancyHandler := tenancyHTTP.NewHandler(tenancyService)
+	identityHandler := identityHTTP.NewHandler(identityService)
+	catalogHandler := catalogHTTP.NewHandler(catalogService)
+	reviewsHandler := reviewsHTTP.NewHandler(reviewsService)
+	ordersHandler := ordersHTTP.NewHandler(ordersService)
+	checkoutHandler := checkoutHTTP.NewHandler(checkoutService)
+
+	const (
+		roleSeller      = "SELLER"
+		roleBuyer       = "BUYER"
+		roleSystemAdmin = "SYSTEM_ADMIN"
+		roleGlobalAdmin = "GLOBAL_ADMIN"
+	)
+
 	r.Route("/api/v1", func(r chi.Router) {
 		r.Use(func(next http.Handler) http.Handler {
 			return telemetry.InstrumentHandler(next, httpMetrics, "api")
 		})
 
-		// Tenancy
-		tenancyHandler := tenancyHTTP.NewHandler(tenancyService)
+		// Tenant management is not tenant-scoped itself.
 		tenancyHandler.Routes(r)
+
+		// Everything below requires a resolved tenant (X-Tenant-ID header).
+		r.Group(func(r chi.Router) {
+			r.Use(httpmw.TenantResolver(tenancyService))
+
+			// Public within the tenant: auth, browsing catalog & reviews.
+			identityHandler.Routes(r)
+			catalogHandler.PublicRoutes(r)
+			reviewsHandler.PublicRoutes(r)
+
+			// Authenticated routes.
+			r.Group(func(r chi.Router) {
+				r.Use(httpmw.RequireAuth(tokenService))
+
+				identityHandler.ProtectedRoutes(r)
+				reviewsHandler.ProtectedRoutes(r)
+				ordersHandler.Routes(r)
+				checkoutHandler.Routes(r)
+
+				// Catalog management: Seller, System Admin or Global Admin.
+				r.Group(func(r chi.Router) {
+					r.Use(httpmw.RequireRole(roleSeller, roleSystemAdmin, roleGlobalAdmin))
+					catalogHandler.ManageRoutes(r)
+				})
+			})
+		})
 	})
 
 	// Server

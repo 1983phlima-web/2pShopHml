@@ -49,3 +49,11 @@ func (s *Service) UpdateStatus(ctx context.Context, tenantID, id string, status 
 	}
 	return nil
 }
+
+func (s *Service) ListMyOrders(ctx context.Context, tenantID, customerID string, limit, offset int) ([]*domain.Order, error) {
+	orders, err := s.repo.ListByCustomer(ctx, tenantID, customerID, limit, offset)
+	if err != nil {
+		return nil, errors.Wrap(errors.ErrInternal, "failed to list orders", err)
+	}
+	return orders, nil
+}

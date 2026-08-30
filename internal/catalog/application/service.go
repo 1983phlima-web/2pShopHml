@@ -62,3 +62,15 @@ func (s *Service) PublishProduct(ctx context.Context, tenantID, id string) error
 	}
 	return nil
 }
+
+func (s *Service) ListActive(ctx context.Context, tenantID string, limit, offset int) ([]*domain.Product, error) {
+	products, err := s.repo.List(ctx, tenantID, domain.StateActive, limit, offset)
+	if err != nil {
+		return nil, errors.Wrap(errors.ErrInternal, "failed to list products", err)
+	}
+	return products, nil
+}
+
+func (s *Service) CountActive(ctx context.Context, tenantID string) (int, error) {
+	return s.repo.CountByTenant(ctx, tenantID)
+}

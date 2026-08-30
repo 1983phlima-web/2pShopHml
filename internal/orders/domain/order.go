@@ -9,13 +9,13 @@ import (
 type Status string
 
 const (
-	StatusPending    Status = "PENDING"
-	StatusConfirmed  Status = "CONFIRMED"
-	StatusPaid       Status = "PAID"
-	StatusShipped    Status = "SHIPPED"
-	StatusDelivered  Status = "DELIVERED"
-	StatusCancelled  Status = "CANCELLED"
-	StatusRefunded   Status = "REFUNDED"
+	StatusPending   Status = "PENDING"
+	StatusConfirmed Status = "CONFIRMED"
+	StatusPaid      Status = "PAID"
+	StatusShipped   Status = "SHIPPED"
+	StatusDelivered Status = "DELIVERED"
+	StatusCancelled Status = "CANCELLED"
+	StatusRefunded  Status = "REFUNDED"
 )
 
 type Order struct {

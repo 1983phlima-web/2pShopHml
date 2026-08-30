@@ -1,5 +1,7 @@
 package domain
 
+import "context"
+
 type Provider interface {
 	Authorize(ctx context.Context, request AuthorizeRequest) (Authorization, error)
 	Capture(ctx context.Context, request CaptureRequest) (Capture, error)
@@ -7,18 +9,18 @@ type Provider interface {
 }
 
 type AuthorizeRequest struct {
-	TenantID      string `json:"tenant_id"`
-	OrderID       string `json:"order_id"`
-	Amount        int64  `json:"amount"` // cents
-	Currency      string `json:"currency"`
-	IdempotencyKey string `json:"idempotency_key"`
-	PaymentMethod PaymentMethod `json:"payment_method"`
+	TenantID       string        `json:"tenant_id"`
+	OrderID        string        `json:"order_id"`
+	Amount         int64         `json:"amount"` // cents
+	Currency       string        `json:"currency"`
+	IdempotencyKey string        `json:"idempotency_key"`
+	PaymentMethod  PaymentMethod `json:"payment_method"`
 }
 
 type PaymentMethod struct {
-	Type       string `json:"type"`
-	Token      string `json:"token"`
-	Last4      string `json:"last4,omitempty"`
+	Type        string `json:"type"`
+	Token       string `json:"token"`
+	Last4       string `json:"last4,omitempty"`
 	ExpiryMonth string `json:"expiry_month,omitempty"`
 	ExpiryYear  string `json:"expiry_year,omitempty"`
 }
@@ -33,10 +35,10 @@ type Authorization struct {
 }
 
 type CaptureRequest struct {
-	TenantID         string `json:"tenant_id"`
-	AuthorizationID  string `json:"authorization_id"`
-	Amount           int64  `json:"amount"`
-	IdempotencyKey   string `json:"idempotency_key"`
+	TenantID        string `json:"tenant_id"`
+	AuthorizationID string `json:"authorization_id"`
+	Amount          int64  `json:"amount"`
+	IdempotencyKey  string `json:"idempotency_key"`
 }
 
 type Capture struct {

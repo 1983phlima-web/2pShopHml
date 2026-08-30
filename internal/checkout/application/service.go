@@ -3,15 +3,14 @@ package application
 import (
 	"context"
 	"fmt"
-	"time"
 
-	"github.com/2pshop/2pshop/internal/catalog/ports"
 	catalogDomain "github.com/2pshop/2pshop/internal/catalog/domain"
-	"github.com/2pshop/2pshop/internal/inventory/ports"
+	catalogPorts "github.com/2pshop/2pshop/internal/catalog/ports"
+	inventoryApp "github.com/2pshop/2pshop/internal/inventory/application"
 	inventoryDomain "github.com/2pshop/2pshop/internal/inventory/domain"
-	"github.com/2pshop/2pshop/internal/orders/ports"
+	ordersApp "github.com/2pshop/2pshop/internal/orders/application"
 	orderDomain "github.com/2pshop/2pshop/internal/orders/domain"
-	"github.com/2pshop/2pshop/internal/payments/application"
+	paymentsApp "github.com/2pshop/2pshop/internal/payments/application"
 	paymentDomain "github.com/2pshop/2pshop/internal/payments/domain"
 	"github.com/2pshop/2pshop/pkg/errors"
 	"github.com/2pshop/2pshop/pkg/idempotency"
@@ -20,38 +19,38 @@ import (
 )
 
 type Service struct {
-	catalogRepo    ports.Repository
-	inventoryService *inventory.Service
-	orderService     *orders.Service
-	paymentService   *application.Service
+	catalogRepo      catalogPorts.Repository
+	inventoryService *inventoryApp.Service
+	orderService     *ordersApp.Service
+	paymentService   *paymentsApp.Service
 	idempotency      *idempotency.Manager
 	tracer           trace.Tracer
 }
 
 func NewService(
-	catalogRepo ports.Repository,
-	inventoryService *inventory.Service,
-	orderService *orders.Service,
-	paymentService *application.Service,
-	idempotency *idempotency.Manager,
+	catalogRepo catalogPorts.Repository,
+	inventoryService *inventoryApp.Service,
+	orderService *ordersApp.Service,
+	paymentService *paymentsApp.Service,
+	idempotencyMgr *idempotency.Manager,
 	tracer trace.Tracer,
 ) *Service {
 	return &Service{
-		catalogRepo:    catalogRepo,
+		catalogRepo:      catalogRepo,
 		inventoryService: inventoryService,
 		orderService:     orderService,
 		paymentService:   paymentService,
-		idempotency:      idempotency,
+		idempotency:      idempotencyMgr,
 		tracer:           tracer,
 	}
 }
 
 type CheckoutRequest struct {
-	TenantID      string                `json:"tenant_id"`
-	CustomerID    string                `json:"customer_id"`
-	Items         []CheckoutItem        `json:"items"`
-	PaymentMethod paymentDomain.PaymentMethod `json:"payment_method"`
-	IdempotencyKey string               `json:"idempotency_key"`
+	TenantID       string                      `json:"tenant_id"`
+	CustomerID     string                      `json:"customer_id"`
+	Items          []CheckoutItem              `json:"items"`
+	PaymentMethod  paymentDomain.PaymentMethod `json:"payment_method"`
+	IdempotencyKey string                      `json:"idempotency_key"`
 }
 
 type CheckoutItem struct {
@@ -64,6 +63,16 @@ type CheckoutResult struct {
 	Status  string `json:"status"`
 }
 
+// idempotencyFail is a nil-safe wrapper: idempotency tracking is optional
+// (only enabled when REDIS_URL is configured), so failures must never
+// panic when it's disabled.
+func (s *Service) idempotencyFail(ctx context.Context, tenantID, key string) {
+	if s.idempotency == nil || key == "" {
+		return
+	}
+	_ = s.idempotency.Fail(ctx, tenantID, key)
+}
+
 func (s *Service) Checkout(ctx context.Context, req CheckoutRequest) (*CheckoutResult, error) {
 	ctx, span := s.tracer.Start(ctx, "checkout.execute",
 		trace.WithAttributes(
@@ -73,8 +82,8 @@ func (s *Service) Checkout(ctx context.Context, req CheckoutRequest) (*CheckoutR
 	)
 	defer span.End()
 
-	// Idempotency check
-	if req.IdempotencyKey != "" {
+	// Idempotency check (only when Redis-backed idempotency is configured).
+	if s.idempotency != nil && req.IdempotencyKey != "" {
 		existing, err := s.idempotency.Check(ctx, req.TenantID, req.IdempotencyKey, "checkout", req)
 		if err != nil {
 			return nil, err
@@ -82,11 +91,6 @@ func (s *Service) Checkout(ctx context.Context, req CheckoutRequest) (*CheckoutR
 		if existing != nil {
 			return &CheckoutResult{OrderID: "", Status: string(existing.Status)}, nil
 		}
-		defer func() {
-			if span.SpanContext().TraceState().String() == "" {
-				// no-op
-			}
-		}()
 	}
 
 	// 1. Validate
@@ -98,12 +102,12 @@ func (s *Service) Checkout(ctx context.Context, req CheckoutRequest) (*CheckoutR
 		if err != nil {
 			validateSpan.RecordError(err)
 			validateSpan.End()
-			s.idempotency.Fail(ctx, req.TenantID, req.IdempotencyKey)
+			s.idempotencyFail(ctx, req.TenantID, req.IdempotencyKey)
 			return nil, errors.Wrap(errors.ErrNotFound, "product not found", err)
 		}
 		if product.State != catalogDomain.StateActive {
 			validateSpan.End()
-			s.idempotency.Fail(ctx, req.TenantID, req.IdempotencyKey)
+			s.idempotencyFail(ctx, req.TenantID, req.IdempotencyKey)
 			return nil, errors.New(errors.ErrInvalidInput).WithDetail("product", "not active")
 		}
 		orderItems = append(orderItems, orderDomain.OrderItem{
@@ -128,7 +132,7 @@ func (s *Service) Checkout(ctx context.Context, req CheckoutRequest) (*CheckoutR
 			for _, r := range reservations {
 				_ = s.inventoryService.Release(ctx, req.TenantID, r.ID)
 			}
-			s.idempotency.Fail(ctx, req.TenantID, req.IdempotencyKey)
+			s.idempotencyFail(ctx, req.TenantID, req.IdempotencyKey)
 			return nil, err
 		}
 		reservations = append(reservations, res)
@@ -153,7 +157,7 @@ func (s *Service) Checkout(ctx context.Context, req CheckoutRequest) (*CheckoutR
 		for _, r := range reservations {
 			_ = s.inventoryService.Release(ctx, req.TenantID, r.ID)
 		}
-		s.idempotency.Fail(ctx, req.TenantID, req.IdempotencyKey)
+		s.idempotencyFail(ctx, req.TenantID, req.IdempotencyKey)
 		return nil, err
 	}
 	paymentSpan.End()
@@ -166,14 +170,14 @@ func (s *Service) Checkout(ctx context.Context, req CheckoutRequest) (*CheckoutR
 		orderSpan.End()
 		// Compensation: void payment, release inventory
 		_, _ = s.paymentService.Refund(ctx, "stripe", paymentDomain.RefundRequest{
-			TenantID: req.TenantID,
+			TenantID:  req.TenantID,
 			CaptureID: auth.ID,
-			Amount: total,
+			Amount:    total,
 		})
 		for _, r := range reservations {
 			_ = s.inventoryService.Release(ctx, req.TenantID, r.ID)
 		}
-		s.idempotency.Fail(ctx, req.TenantID, req.IdempotencyKey)
+		s.idempotencyFail(ctx, req.TenantID, req.IdempotencyKey)
 		return nil, err
 	}
 	orderSpan.End()
@@ -188,8 +192,13 @@ func (s *Service) Checkout(ctx context.Context, req CheckoutRequest) (*CheckoutR
 	})
 	captureSpan.End()
 
-	if req.IdempotencyKey != "" {
+	if s.idempotency != nil && req.IdempotencyKey != "" {
 		_ = s.idempotency.Complete(ctx, req.TenantID, req.IdempotencyKey, 200, []byte(fmt.Sprintf(`{"order_id":"%s"}`, order.ID)))
+	}
+
+	if err := s.orderService.UpdateStatus(ctx, req.TenantID, order.ID, orderDomain.StatusConfirmed); err != nil {
+		// Non-fatal: the order was created and paid; status sync can be retried.
+		_ = err
 	}
 
 	return &CheckoutResult{

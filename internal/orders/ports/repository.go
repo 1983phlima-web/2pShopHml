@@ -11,6 +11,7 @@ type Repository interface {
 	GetByID(ctx context.Context, tenantID, id string) (*domain.Order, error)
 	UpdateStatus(ctx context.Context, tenantID, id string, status domain.Status) error
 	ListByTenant(ctx context.Context, tenantID string, limit, offset int) ([]*domain.Order, error)
+	ListByCustomer(ctx context.Context, tenantID, customerID string, limit, offset int) ([]*domain.Order, error)
 }
 
 type EventPublisher interface {

@@ -1,3 +1,5 @@
+import { getToken } from './auth';
+
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080';
 const TENANT_ID = process.env.NEXT_PUBLIC_TENANT_ID || 'tenant_01';
 
@@ -7,6 +9,11 @@ export function api(path: string, init?: RequestInit): Promise<Response> {
 
   headers.set('Content-Type', 'application/json');
   headers.set('X-Tenant-ID', TENANT_ID);
+
+  const token = getToken();
+  if (token && !headers.has('Authorization')) {
+    headers.set('Authorization', `Bearer ${token}`);
+  }
 
   // Propaga trace context se disponível (W3C Trace Context)
   const traceparent = getTraceparent();

@@ -5,7 +5,7 @@ CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
 -- Tenants
 CREATE TABLE tenants (
-    id          UUID PRIMARY KEY DEFAULT uuid_generate_v7(),
+    id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     name        VARCHAR(255) NOT NULL,
     slug        VARCHAR(255) NOT NULL UNIQUE,
     status      VARCHAR(20) NOT NULL DEFAULT 'TRIAL',
@@ -20,7 +20,7 @@ CREATE INDEX idx_tenants_slug ON tenants(slug);
 
 -- Users
 CREATE TABLE users (
-    id          UUID PRIMARY KEY DEFAULT uuid_generate_v7(),
+    id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     tenant_id   UUID NOT NULL REFERENCES tenants(id),
     email       VARCHAR(255) NOT NULL,
     name        VARCHAR(255) NOT NULL,
@@ -36,7 +36,7 @@ CREATE INDEX idx_users_tenant_email ON users(tenant_id, email);
 
 -- Products
 CREATE TABLE products (
-    id          UUID PRIMARY KEY DEFAULT uuid_generate_v7(),
+    id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     tenant_id   UUID NOT NULL REFERENCES tenants(id),
     name        VARCHAR(500) NOT NULL,
     slug        VARCHAR(500) NOT NULL,
@@ -59,7 +59,7 @@ CREATE INDEX idx_products_tenant_slug ON products(tenant_id, slug);
 
 -- Categories
 CREATE TABLE categories (
-    id          UUID PRIMARY KEY DEFAULT uuid_generate_v7(),
+    id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     tenant_id   UUID NOT NULL REFERENCES tenants(id),
     name        VARCHAR(255) NOT NULL,
     slug        VARCHAR(255) NOT NULL,
@@ -71,7 +71,7 @@ CREATE TABLE categories (
 
 -- Inventory
 CREATE TABLE inventory (
-    id          UUID PRIMARY KEY DEFAULT uuid_generate_v7(),
+    id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     tenant_id   UUID NOT NULL REFERENCES tenants(id),
     product_id  UUID NOT NULL REFERENCES products(id),
     variant_id  UUID,
@@ -85,7 +85,7 @@ CREATE INDEX idx_inventory_tenant_product ON inventory(tenant_id, product_id);
 
 -- Reservations
 CREATE TABLE reservations (
-    id          UUID PRIMARY KEY DEFAULT uuid_generate_v7(),
+    id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     tenant_id   UUID NOT NULL REFERENCES tenants(id),
     product_id  UUID NOT NULL REFERENCES products(id),
     variant_id  UUID,
@@ -100,7 +100,7 @@ CREATE INDEX idx_reservations_tenant_order ON reservations(tenant_id, order_id);
 
 -- Orders
 CREATE TABLE orders (
-    id          UUID PRIMARY KEY DEFAULT uuid_generate_v7(),
+    id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     tenant_id   UUID NOT NULL REFERENCES tenants(id),
     customer_id UUID NOT NULL REFERENCES users(id),
     items       JSONB NOT NULL DEFAULT '[]',
@@ -115,7 +115,7 @@ CREATE INDEX idx_orders_tenant_status ON orders(tenant_id, status);
 
 -- Outbox (event sourcing pattern)
 CREATE TABLE outbox_events (
-    id          UUID PRIMARY KEY DEFAULT uuid_generate_v7(),
+    id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     tenant_id   UUID NOT NULL,
     aggregate_type VARCHAR(50) NOT NULL,
     aggregate_id   VARCHAR(100) NOT NULL,
@@ -132,7 +132,7 @@ CREATE INDEX idx_outbox_aggregate ON outbox_events(aggregate_type, aggregate_id)
 
 -- Idempotency keys
 CREATE TABLE idempotency_keys (
-    id          UUID PRIMARY KEY DEFAULT uuid_generate_v7(),
+    id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     tenant_id   UUID NOT NULL REFERENCES tenants(id),
     key         VARCHAR(255) NOT NULL,
     operation   VARCHAR(100) NOT NULL,
@@ -149,7 +149,7 @@ CREATE INDEX idx_idempotency_expires ON idempotency_keys(expires_at);
 
 -- Payments
 CREATE TABLE payments (
-    id              UUID PRIMARY KEY DEFAULT uuid_generate_v7(),
+    id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     tenant_id       UUID NOT NULL REFERENCES tenants(id),
     order_id        UUID NOT NULL REFERENCES orders(id),
     provider        VARCHAR(50) NOT NULL,
@@ -168,7 +168,7 @@ CREATE INDEX idx_payments_tenant_order ON payments(tenant_id, order_id);
 
 -- Audit log
 CREATE TABLE audit_log (
-    id          UUID PRIMARY KEY DEFAULT uuid_generate_v7(),
+    id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     tenant_id   UUID NOT NULL,
     table_name  VARCHAR(100) NOT NULL,
     record_id   VARCHAR(100) NOT NULL,

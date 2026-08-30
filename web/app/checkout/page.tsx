@@ -1,11 +1,14 @@
 'use client';
 
 import { useCart } from '@/components/CartContext';
+import { useAuth } from '@/components/AuthContext';
 import { useState } from 'react';
+import Link from 'next/link';
 import { api } from '@/lib/api';
 
 export default function CheckoutPage() {
   const { items, clear } = useCart();
+  const { user } = useAuth();
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<{ order_id: string; status: string } | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -18,12 +21,10 @@ export default function CheckoutPage() {
     try {
       const res = await api('/checkout', {
         method: 'POST',
+        headers: { 'Idempotency-Key': `checkout-${Date.now()}` },
         body: JSON.stringify({
-          tenant_id: process.env.NEXT_PUBLIC_TENANT_ID || 'tenant_01',
-          customer_id: 'user_01',
           items: items.map((i) => ({ product_id: i.id, quantity: i.quantity })),
           payment_method: { type: 'card', token: 'tok_visa' },
-          idempotency_key: `checkout-${Date.now()}`,
         }),
       });
       const data = await res.json();
@@ -56,6 +57,11 @@ export default function CheckoutPage() {
       <h1 className="text-2xl font-bold mb-6">Checkout</h1>
       {items.length === 0 ? (
         <p className="text-gray-500">Seu carrinho está vazio.</p>
+      ) : !user ? (
+        <div className="bg-white p-6 rounded-lg border text-center">
+          <p className="text-gray-600 mb-4">Entre na sua conta para finalizar a compra.</p>
+          <Link href="/login" className="text-indigo-600 hover:underline font-medium">Entrar</Link>
+        </div>
       ) : (
         <div className="space-y-4">
           {items.map((item) => (

@@ -2,7 +2,6 @@ package application
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/2pshop/2pshop/internal/identity/domain"
 	"github.com/2pshop/2pshop/internal/identity/ports"
@@ -18,7 +17,7 @@ func NewService(repo ports.Repository, token ports.TokenService) *Service {
 	return &Service{repo: repo, token: token}
 }
 
-func (s *Service) CreateUser(ctx context.Context, tenantID, email, name string, role domain.Role) (*domain.User, error) {
+func (s *Service) CreateUser(ctx context.Context, tenantID, email, name, password string, role domain.Role) (*domain.User, error) {
 	existing, err := s.repo.GetByEmail(ctx, tenantID, email)
 	if err != nil && !errors.IsNotFound(err) {
 		return nil, errors.Wrap(errors.ErrInternal, "failed to check existing user", err)
@@ -28,30 +27,44 @@ func (s *Service) CreateUser(ctx context.Context, tenantID, email, name string, 
 	}
 
 	user := domain.NewUser(tenantID, email, name, role)
+	if err := user.SetPassword(password); err != nil {
+		return nil, errors.Wrap(errors.ErrInternal, "failed to hash password", err)
+	}
 	if err := s.repo.Create(ctx, user); err != nil {
 		return nil, errors.Wrap(errors.ErrInternal, "failed to create user", err)
 	}
 	return user, nil
 }
 
-func (s *Service) Authenticate(ctx context.Context, tenantID, email, password string) (string, error) {
+func (s *Service) Authenticate(ctx context.Context, tenantID, email, password string) (string, *domain.User, error) {
 	user, err := s.repo.GetByEmail(ctx, tenantID, email)
 	if err != nil {
 		if errors.IsNotFound(err) {
-			return "", errors.New(errors.ErrUnauthorized).WithDetail("reason", "invalid credentials")
+			return "", nil, errors.New(errors.ErrUnauthorized).WithDetail("reason", "invalid credentials")
 		}
-		return "", errors.Wrap(errors.ErrInternal, "authentication failed", err)
+		return "", nil, errors.Wrap(errors.ErrInternal, "authentication failed", err)
 	}
 	if !user.Active {
-		return "", errors.New(errors.ErrUnauthorized).WithDetail("reason", "user inactive")
+		return "", nil, errors.New(errors.ErrUnauthorized).WithDetail("reason", "user inactive")
 	}
-
-	// TODO: password hash comparison
-	_ = password
+	if !user.CheckPassword(password) {
+		return "", nil, errors.New(errors.ErrUnauthorized).WithDetail("reason", "invalid credentials")
+	}
 
 	token, err := s.token.Generate(ctx, user)
 	if err != nil {
-		return "", errors.Wrap(errors.ErrInternal, "token generation failed", err)
+		return "", nil, errors.Wrap(errors.ErrInternal, "token generation failed", err)
 	}
-	return token, nil
+	return token, user, nil
+}
+
+func (s *Service) GetUser(ctx context.Context, tenantID, id string) (*domain.User, error) {
+	user, err := s.repo.GetByID(ctx, tenantID, id)
+	if err != nil {
+		if errors.IsNotFound(err) {
+			return nil, errors.New(errors.ErrNotFound).WithDetail("resource", "user")
+		}
+		return nil, errors.Wrap(errors.ErrInternal, "failed to get user", err)
+	}
+	return user, nil
 }

@@ -9,12 +9,12 @@ import (
 type Status string
 
 const (
-	StatusTrial      Status = "TRIAL"
-	StatusActive     Status = "ACTIVE"
-	StatusPastDue    Status = "PAST_DUE"
-	StatusSuspended  Status = "SUSPENDED"
-	StatusCancelled  Status = "CANCELLED"
-	StatusExpired    Status = "EXPIRED"
+	StatusTrial     Status = "TRIAL"
+	StatusActive    Status = "ACTIVE"
+	StatusPastDue   Status = "PAST_DUE"
+	StatusSuspended Status = "SUSPENDED"
+	StatusCancelled Status = "CANCELLED"
+	StatusExpired   Status = "EXPIRED"
 )
 
 type Tenant struct {
@@ -29,11 +29,11 @@ type Tenant struct {
 }
 
 type Limits struct {
-	MaxProducts   int `json:"max_products"`
-	MaxOrders     int `json:"max_orders_monthly"`
-	MaxUsers      int `json:"max_users"`
-	MaxStorageGB  int `json:"max_storage_gb"`
-	APIRateLimit  int `json:"api_rate_limit"`
+	MaxProducts  int `json:"max_products"`
+	MaxOrders    int `json:"max_orders_monthly"`
+	MaxUsers     int `json:"max_users"`
+	MaxStorageGB int `json:"max_storage_gb"`
+	APIRateLimit int `json:"api_rate_limit"`
 }
 
 func NewTenant(name, slug, planID string) *Tenant {

@@ -13,16 +13,17 @@ type Config struct {
 	DatabaseURL  string
 	RedisURL     string
 	KafkaBrokers string
+	JWTSecret    string
 	OTEL         OTELConfig
 }
 
 type OTELConfig struct {
-	Endpoint     string
-	ServiceName  string
+	Endpoint       string
+	ServiceName    string
 	ServiceVersion string
-	Environment  string
-	Region       string
-	SamplingRate float64
+	Environment    string
+	Region         string
+	SamplingRate   float64
 }
 
 func LoadConfig() (*Config, error) {
@@ -32,6 +33,7 @@ func LoadConfig() (*Config, error) {
 		DatabaseURL:  getEnv("DATABASE_URL", ""),
 		RedisURL:     getEnv("REDIS_URL", ""),
 		KafkaBrokers: getEnv("KAFKA_BROKERS", ""),
+		JWTSecret:    getEnv("JWT_SECRET", "2pshop-hml-default-secret-change-me"),
 		OTEL: OTELConfig{
 			Endpoint:       getEnv("OTEL_EXPORTER_OTLP_ENDPOINT", "localhost:4317"),
 			ServiceName:    getEnv("OTEL_SERVICE_NAME", "2pshop"),
