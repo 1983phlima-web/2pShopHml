@@ -16,20 +16,20 @@ const (
 )
 
 type Product struct {
-	ID          string            `json:"id"`
-	TenantID    string            `json:"tenant_id"`
-	Name        string            `json:"name"`
-	Slug        string            `json:"slug"`
-	Description string            `json:"description"`
-	SKU         string            `json:"sku"`
-	Price       int64             `json:"price"` // cents
-	State       PublicationState  `json:"state"`
-	CategoryID  string            `json:"category_id"`
-	BrandID     string            `json:"brand_id,omitempty"`
-	Attributes  map[string]string `json:"attributes,omitempty"`
-	SEO         SEO               `json:"seo,omitempty"`
-	CreatedAt   time.Time         `json:"created_at"`
-	UpdatedAt   time.Time         `json:"updated_at"`
+	ID          string           `json:"id"`
+	TenantID    string           `json:"tenant_id"`
+	Name        string           `json:"name"`
+	Slug        string           `json:"slug"`
+	Description string           `json:"description"`
+	SKU         string           `json:"sku"`
+	Price       int64            `json:"price"` // cents
+	State       PublicationState `json:"state"`
+	CategoryID  string           `json:"category_id"`
+	BrandID     string           `json:"brand_id,omitempty"`
+	Attributes  map[string]any   `json:"attributes,omitempty"`
+	SEO         SEO              `json:"seo,omitempty"`
+	CreatedAt   time.Time        `json:"created_at"`
+	UpdatedAt   time.Time        `json:"updated_at"`
 }
 
 type SEO struct {
@@ -48,7 +48,7 @@ func NewProduct(tenantID, name, slug, sku string, price int64) *Product {
 		SKU:        sku,
 		Price:      price,
 		State:      StateDraft,
-		Attributes: make(map[string]string),
+		Attributes: make(map[string]any),
 		CreatedAt:  now,
 		UpdatedAt:  now,
 	}

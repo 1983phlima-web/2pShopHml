@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
+import Image from 'next/image';
 import { useAuth } from '@/components/AuthContext';
 import { useCart } from '@/components/CartContext';
 import { api } from '@/lib/api';
@@ -14,6 +15,13 @@ interface Product {
   description: string;
   price: number;
   state: string;
+  attributes?: {
+    image?: string;
+    badge?: string;
+    brand?: string;
+    compare_at?: number;
+    sold?: number;
+  };
 }
 
 interface Review {
@@ -96,20 +104,47 @@ export default function ProductDetailPage() {
     <div className="max-w-3xl mx-auto space-y-10">
       <div>
         <Link href="/products" className="text-sm text-indigo-600 hover:underline">← Voltar aos produtos</Link>
-        <div className="bg-white rounded-xl border border-gray-100 p-8 mt-4">
-          <h1 className="text-2xl font-bold mb-2">{product.name}</h1>
-          <div className="flex items-center gap-2 mb-4">
-            <Stars value={average} />
-            <span className="text-sm text-gray-500">
-              {average.toFixed(1)} ({count} avaliaç{count === 1 ? 'ão' : 'ões'})
-            </span>
-          </div>
-          <p className="text-gray-600 mb-6">{product.description}</p>
-          <div className="flex items-center justify-between">
-            <span className="text-2xl font-bold text-indigo-600">R$ {(product.price / 100).toFixed(2)}</span>
+        <div className="bg-white rounded-xl border border-gray-100 overflow-hidden mt-4 grid md:grid-cols-2">
+          {product.attributes?.image && (
+            <div className="relative h-64 md:h-full bg-gray-100">
+              <Image
+                src={product.attributes.image}
+                alt={product.name}
+                fill
+                sizes="(max-width: 768px) 100vw, 50vw"
+                className="object-cover"
+                priority
+              />
+              {product.attributes?.badge && (
+                <span className="absolute top-3 left-3 bg-indigo-600 text-white text-[10px] font-bold px-2 py-1 rounded-full uppercase tracking-wide">
+                  {product.attributes.badge}
+                </span>
+              )}
+            </div>
+          )}
+          <div className="p-8">
+            {product.attributes?.brand && (
+              <p className="text-xs font-bold uppercase tracking-wide text-indigo-500 mb-1">{product.attributes.brand}</p>
+            )}
+            <h1 className="text-2xl font-bold mb-2">{product.name}</h1>
+            <div className="flex items-center gap-2 mb-4">
+              <Stars value={average} />
+              <span className="text-sm text-gray-500">
+                {average.toFixed(1)} ({count} avaliaç{count === 1 ? 'ão' : 'ões'})
+              </span>
+            </div>
+            <p className="text-gray-600 mb-6">{product.description}</p>
+            <div className="flex items-center gap-3 mb-6">
+              {product.attributes?.compare_at && product.attributes.compare_at > product.price && (
+                <span className="text-sm text-gray-400 line-through">
+                  R$ {(product.attributes.compare_at / 100).toFixed(2)}
+                </span>
+              )}
+              <span className="text-2xl font-bold text-indigo-600">R$ {(product.price / 100).toFixed(2)}</span>
+            </div>
             <button
               onClick={() => add({ id: product.id, name: product.name, price: product.price, quantity: 1 })}
-              className="px-4 py-2 bg-indigo-600 text-white rounded-md font-medium hover:bg-indigo-700 transition"
+              className="w-full sm:w-auto px-6 py-2.5 bg-indigo-600 text-white rounded-md font-medium hover:bg-indigo-700 transition"
             >
               Adicionar ao carrinho
             </button>
