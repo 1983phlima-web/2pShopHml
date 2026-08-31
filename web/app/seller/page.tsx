@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { useAuth } from '@/components/AuthContext';
+import { SellerDashboard } from '@/components/SellerDashboard';
 import { api } from '@/lib/api';
 
 interface Product {
@@ -97,6 +98,8 @@ export default function SellerPage() {
 
   return (
     <div className="max-w-3xl mx-auto space-y-10">
+      <SellerDashboard />
+
       <div>
         <h1 className="text-2xl font-bold mb-1">Painel do Vendedor</h1>
         <p className="text-sm text-gray-500 mb-6">Cadastre novos produtos e publique-os na vitrine.</p>

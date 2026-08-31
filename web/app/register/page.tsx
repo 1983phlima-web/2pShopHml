@@ -14,8 +14,8 @@ export default function RegisterPage() {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    const ok = await register(name, email, password);
-    if (ok) router.push('/products');
+    const user = await register(name, email, password);
+    if (user) router.push('/products');
   }
 
   return (

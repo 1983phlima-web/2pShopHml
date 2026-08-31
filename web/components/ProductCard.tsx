@@ -27,9 +27,9 @@ function HeartIcon({ filled }: { filled: boolean }) {
   return (
     <svg
       viewBox="0 0 24 24"
-      className="h-5 w-5"
+      className="h-6 w-6"
       fill={filled ? '#e11d48' : 'none'}
-      stroke={filled ? '#e11d48' : 'currentColor'}
+      stroke={filled ? '#e11d48' : '#ffffff'}
       strokeWidth={2}
     >
       <path
@@ -86,7 +86,7 @@ export function ProductCard({ product }: { product: Product }) {
           onClick={handleFavoriteClick}
           aria-label={favorited ? 'Remover dos favoritos' : 'Adicionar aos favoritos'}
           aria-pressed={favorited}
-          className="absolute top-2 right-2 h-8 w-8 rounded-full bg-white/90 backdrop-blur flex items-center justify-center shadow-sm hover:scale-110 transition z-10"
+          className="absolute top-2 right-2 h-8 w-8 flex items-center justify-center hover:scale-110 transition z-10 drop-shadow"
         >
           <HeartIcon filled={favorited} />
         </button>

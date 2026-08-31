@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '@/components/AuthContext';
+import { roleHomePath } from '@/lib/auth';
 
 export default function LoginPage() {
   const { login, loading, error } = useAuth();
@@ -13,8 +14,8 @@ export default function LoginPage() {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    const ok = await login(email, password);
-    if (ok) router.push('/products');
+    const user = await login(email, password);
+    if (user) router.push(roleHomePath(user.role));
   }
 
   return (

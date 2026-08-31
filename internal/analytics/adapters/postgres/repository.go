@@ -180,3 +180,54 @@ func (r *Repository) Health(ctx context.Context, tenantID string) (*domain.Healt
 
 	return h, nil
 }
+
+// RecordSnapshot measures current DB latency (via a lightweight ping) and
+// platform-wide counts, then persists one row to health_snapshots. Called
+// periodically by a background job in main.go — this is how the health
+// history charts get real, structured data over time instead of mocks.
+func (r *Repository) RecordSnapshot(ctx context.Context) error {
+	start := time.Now()
+	var one int
+	pingErr := r.db.Pool.QueryRow(ctx, `SELECT 1`).Scan(&one)
+	latencyMs := float64(time.Since(start).Microseconds()) / 1000.0
+
+	var users, products, orders int
+	var revenue int64
+	_ = r.db.Pool.QueryRow(ctx, `SELECT COUNT(*) FROM users`).Scan(&users)
+	_ = r.db.Pool.QueryRow(ctx, `SELECT COUNT(*) FROM products`).Scan(&products)
+	_ = r.db.Pool.QueryRow(ctx, `SELECT COUNT(*), COALESCE(SUM(total), 0) FROM orders`).Scan(&orders, &revenue)
+
+	_, err := r.db.Pool.Exec(ctx, `
+		INSERT INTO health_snapshots (id, recorded_at, db_ok, db_latency_ms, total_users, total_products, total_orders, total_revenue)
+		VALUES (gen_random_uuid(), NOW(), $1, $2, $3, $4, $5, $6)
+	`, pingErr == nil, latencyMs, users, products, orders, revenue)
+	return err
+}
+
+// HealthHistory returns sampled health snapshots recorded since the given
+// time, ordered chronologically — powers the historical trend charts with
+// period drill-down (24h/7d/30d) on the Global Admin panel.
+func (r *Repository) HealthHistory(ctx context.Context, since time.Time) ([]domain.HealthPoint, error) {
+	rows, err := r.db.Pool.Query(ctx, `
+		SELECT recorded_at, db_ok, db_latency_ms, total_users, total_products, total_orders, total_revenue
+		FROM health_snapshots
+		WHERE recorded_at >= $1
+		ORDER BY recorded_at ASC
+	`, since)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var points []domain.HealthPoint
+	for rows.Next() {
+		var p domain.HealthPoint
+		var recordedAt time.Time
+		if err := rows.Scan(&recordedAt, &p.DBOk, &p.DBLatencyMs, &p.TotalUsers, &p.TotalProducts, &p.TotalOrders, &p.TotalRevenue); err != nil {
+			return nil, err
+		}
+		p.RecordedAt = recordedAt.Format(time.RFC3339)
+		points = append(points, p)
+	}
+	return points, rows.Err()
+}

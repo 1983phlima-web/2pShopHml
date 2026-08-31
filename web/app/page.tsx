@@ -1,11 +1,12 @@
 'use client';
 
 import { useEffect, useState, useCallback, useMemo } from 'react';
+import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
 import { ProductCard, Product } from '@/components/ProductCard';
-import { SellerDashboard } from '@/components/SellerDashboard';
 import { useAuth } from '@/components/AuthContext';
+import { roleHomePath } from '@/lib/auth';
 import { api } from '@/lib/api';
 
 const CATEGORIES = [
@@ -19,10 +20,18 @@ const CATEGORIES = [
 
 export default function HomePage() {
   const { user } = useAuth();
+  const router = useRouter();
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [featuredIndex, setFeaturedIndex] = useState(0);
-  const canManage = user && ['SELLER', 'SYSTEM_ADMIN', 'GLOBAL_ADMIN'].includes(user.role);
+
+  // Vendedor e Administração têm o Painel deles como página principal —
+  // a home "/" (vitrine) é exclusiva do Cliente.
+  useEffect(() => {
+    if (user && user.role !== 'BUYER') {
+      router.replace(roleHomePath(user.role));
+    }
+  }, [user, router]);
 
   useEffect(() => {
     api('/products?limit=48')
@@ -53,7 +62,7 @@ export default function HomePage() {
     setFeaturedIndex((i) => (i - 1 + featured.length) % Math.max(featured.length, 1));
   }, [featured.length]);
 
-  if (loading) {
+  if (loading || (user && user.role !== 'BUYER')) {
     return (
       <div className="space-y-8">
         <div className="h-64 bg-gray-100 rounded-2xl animate-pulse" />
@@ -68,8 +77,6 @@ export default function HomePage() {
 
   return (
     <div className="space-y-14">
-      {canManage && <SellerDashboard />}
-
       {/* Hero: Oferta do dia */}
       {offerProduct && (
         <section className="relative overflow-hidden rounded-2xl bg-gray-900 text-white grid md:grid-cols-[1.1fr_.9fr] min-h-[260px]">

@@ -43,3 +43,17 @@ export const ROLE_LABELS: Record<AuthUser['role'], string> = {
   SYSTEM_ADMIN: 'Administrador do Sistema',
   GLOBAL_ADMIN: 'Administrador Global',
 };
+
+// Where each role lands as their "home" after login.
+export function roleHomePath(role: AuthUser['role']): string {
+  switch (role) {
+    case 'SELLER':
+      return '/seller';
+    case 'SYSTEM_ADMIN':
+      return '/admin/system';
+    case 'GLOBAL_ADMIN':
+      return '/admin/global';
+    default:
+      return '/products';
+  }
+}

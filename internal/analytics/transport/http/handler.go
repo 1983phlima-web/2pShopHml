@@ -31,6 +31,7 @@ func (h *Handler) AdminRoutes(r chi.Router) {
 // GlobalRoutes: GlobalAdmin only — infra-level health signals.
 func (h *Handler) GlobalRoutes(r chi.Router) {
 	r.Get("/analytics/health", h.Health)
+	r.Get("/analytics/health-history", h.HealthHistory)
 }
 
 func (h *Handler) SellerSummary(w http.ResponseWriter, r *http.Request) {
@@ -61,6 +62,16 @@ func (h *Handler) Health(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	respondJSON(w, http.StatusOK, report)
+}
+
+func (h *Handler) HealthHistory(w http.ResponseWriter, r *http.Request) {
+	period := r.URL.Query().Get("period")
+	points, err := h.service.HealthHistory(r.Context(), period)
+	if err != nil {
+		respondError(w, err)
+		return
+	}
+	respondJSON(w, http.StatusOK, points)
 }
 
 func respondJSON(w http.ResponseWriter, status int, data any) {

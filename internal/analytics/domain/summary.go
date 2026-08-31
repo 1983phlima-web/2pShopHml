@@ -36,6 +36,18 @@ type AdminSummary struct {
 	TotalReviews    int            `json:"total_reviews"`
 }
 
+// HealthPoint is one sampled snapshot in the health history series,
+// recorded periodically by a background job — real telemetry, not mocked.
+type HealthPoint struct {
+	RecordedAt    string  `json:"recorded_at"`
+	DBOk          bool    `json:"db_ok"`
+	DBLatencyMs   float64 `json:"db_latency_ms"`
+	TotalUsers    int     `json:"total_users"`
+	TotalProducts int     `json:"total_products"`
+	TotalOrders   int     `json:"total_orders"`
+	TotalRevenue  int64   `json:"total_revenue"`
+}
+
 // HealthReport powers the Global Admin health panel: infra-level signals
 // beyond the basic /health liveness check.
 type HealthReport struct {

@@ -2,6 +2,7 @@ package application
 
 import (
 	"context"
+	"time"
 
 	"github.com/2pshop/2pshop/internal/analytics/domain"
 	"github.com/2pshop/2pshop/internal/analytics/ports"
@@ -38,4 +39,24 @@ func (s *Service) Health(ctx context.Context, tenantID string) (*domain.HealthRe
 		return nil, errors.Wrap(errors.ErrInternal, "failed to compute health report", err)
 	}
 	return report, nil
+}
+
+// HealthHistory returns the sampled health curve for the given period
+// ("24h", "7d", or "30d" — defaults to 24h for anything else).
+func (s *Service) HealthHistory(ctx context.Context, period string) ([]domain.HealthPoint, error) {
+	var since time.Time
+	now := time.Now().UTC()
+	switch period {
+	case "7d":
+		since = now.AddDate(0, 0, -7)
+	case "30d":
+		since = now.AddDate(0, 0, -30)
+	default:
+		since = now.Add(-24 * time.Hour)
+	}
+	points, err := s.repo.HealthHistory(ctx, since)
+	if err != nil {
+		return nil, errors.Wrap(errors.ErrInternal, "failed to load health history", err)
+	}
+	return points, nil
 }

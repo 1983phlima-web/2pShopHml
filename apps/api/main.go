@@ -252,6 +252,23 @@ func main() {
 		})
 	})
 
+	// Health snapshot recorder: samples DB latency + platform counts
+	// immediately at boot (so charts have a first data point right away)
+	// and every 5 minutes thereafter. Feeds the Global Admin health
+	// history charts with real, structured telemetry instead of mocks.
+	go func() {
+		if err := analyticsRepo.RecordSnapshot(context.Background()); err != nil {
+			logger.Warn("failed to record initial health snapshot", zap.Error(err))
+		}
+		ticker := time.NewTicker(5 * time.Minute)
+		defer ticker.Stop()
+		for range ticker.C {
+			if err := analyticsRepo.RecordSnapshot(context.Background()); err != nil {
+				logger.Warn("failed to record health snapshot", zap.Error(err))
+			}
+		}
+	}()
+
 	// Server
 	port := cfg.HTTPPort
 	if port == "" {

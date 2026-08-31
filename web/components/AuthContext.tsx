@@ -8,8 +8,8 @@ interface AuthContextType {
   user: AuthUser | null;
   loading: boolean;
   error: string | null;
-  login: (email: string, password: string) => Promise<boolean>;
-  register: (name: string, email: string, password: string) => Promise<boolean>;
+  login: (email: string, password: string) => Promise<AuthUser | null>;
+  register: (name: string, email: string, password: string) => Promise<AuthUser | null>;
   logout: () => void;
 }
 
@@ -35,14 +35,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const data = await res.json();
       if (!res.ok) {
         setError(data.message || 'Credenciais inválidas');
-        return false;
+        return null;
       }
       storeSession(data.token, data.user);
       setUser(data.user);
-      return true;
+      return data.user as AuthUser;
     } catch {
       setError('Falha de conexão');
-      return false;
+      return null;
     } finally {
       setLoading(false);
     }
@@ -59,12 +59,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const data = await res.json();
       if (!res.ok) {
         setError(data.message || 'Não foi possível criar a conta');
-        return false;
+        return null;
       }
       return login(email, password);
     } catch {
       setError('Falha de conexão');
-      return false;
+      return null;
     } finally {
       setLoading(false);
     }
