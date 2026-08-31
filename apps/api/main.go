@@ -16,6 +16,10 @@ import (
 	analyticsApp "github.com/2pshop/2pshop/internal/analytics/application"
 	analyticsHTTP "github.com/2pshop/2pshop/internal/analytics/transport/http"
 
+	favoritesPG "github.com/2pshop/2pshop/internal/favorites/adapters/postgres"
+	favoritesApp "github.com/2pshop/2pshop/internal/favorites/application"
+	favoritesHTTP "github.com/2pshop/2pshop/internal/favorites/transport/http"
+
 	settingsPG "github.com/2pshop/2pshop/internal/settings/adapters/postgres"
 	settingsApp "github.com/2pshop/2pshop/internal/settings/application"
 	settingsHTTP "github.com/2pshop/2pshop/internal/settings/transport/http"
@@ -125,6 +129,7 @@ func main() {
 	ordersRepo := ordersPG.NewRepository(db)
 	settingsRepo := settingsPG.NewRepository(db)
 	analyticsRepo := analyticsPG.NewRepository(db, version)
+	favoritesRepo := favoritesPG.NewRepository(db)
 
 	// Services
 	tenancyService := tenancyApp.NewService(tenancyRepo)
@@ -136,6 +141,7 @@ func main() {
 	ordersService := ordersApp.NewService(ordersRepo, nil)
 	settingsService := settingsApp.NewService(settingsRepo)
 	analyticsService := analyticsApp.NewService(analyticsRepo)
+	favoritesService := favoritesApp.NewService(favoritesRepo)
 	paymentsService := paymentsApp.NewService(map[string]paymentsDomain.Provider{
 		"stripe": paymentsMock.New(), // sandbox provider for HML; swap for a real Stripe adapter in production.
 	})
@@ -186,6 +192,7 @@ func main() {
 	checkoutHandler := checkoutHTTP.NewHandler(checkoutService)
 	settingsHandler := settingsHTTP.NewHandler(settingsService)
 	analyticsHandler := analyticsHTTP.NewHandler(analyticsService)
+	favoritesHandler := favoritesHTTP.NewHandler(favoritesService)
 
 	const (
 		roleSeller      = "SELLER"
@@ -220,6 +227,7 @@ func main() {
 				reviewsHandler.ProtectedRoutes(r)
 				ordersHandler.Routes(r)
 				checkoutHandler.Routes(r)
+				favoritesHandler.Routes(r)
 
 				// Seller (and any admin role): catalog management + sales analytics.
 				r.Group(func(r chi.Router) {

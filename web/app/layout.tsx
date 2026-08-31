@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import './globals.css';
 import { CartProvider } from '@/components/CartContext';
 import { AuthProvider } from '@/components/AuthContext';
+import { FavoritesProvider } from '@/components/FavoritesContext';
 import { ThemeProvider } from '@/components/ThemeProvider';
 import { Header } from '@/components/Header';
 import { OtelInit } from '@/lib/otel';
@@ -24,12 +25,14 @@ export default function RootLayout({
         <WebVitals />
         <ThemeProvider>
           <AuthProvider>
-            <CartProvider>
-              <Header />
-              <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-                {children}
-              </main>
-            </CartProvider>
+            <FavoritesProvider>
+              <CartProvider>
+                <Header />
+                <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+                  {children}
+                </main>
+              </CartProvider>
+            </FavoritesProvider>
           </AuthProvider>
         </ThemeProvider>
       </body>

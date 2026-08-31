@@ -5,11 +5,13 @@ import Link from 'next/link';
 import { useState } from 'react';
 import { useAuth } from './AuthContext';
 import { useCart } from './CartContext';
+import { useFavorites } from './FavoritesContext';
 import { ROLE_LABELS } from '@/lib/auth';
 
 export function Header() {
   const { user, logout } = useAuth();
   const { items } = useCart();
+  const { ids: favoriteIds } = useFavorites();
   const [menuOpen, setMenuOpen] = useState(false);
   const cartCount = items.reduce((sum, i) => sum + i.quantity, 0);
 
@@ -25,6 +27,16 @@ export function Header() {
       {user && (
         <Link href="/orders" className="text-sm font-medium hover:text-indigo-600" onClick={() => setMenuOpen(false)}>
           Meus Pedidos
+        </Link>
+      )}
+      {user && (
+        <Link href="/favorites" className="text-sm font-medium hover:text-indigo-600 relative" onClick={() => setMenuOpen(false)}>
+          Favoritos
+          {favoriteIds.size > 0 && (
+            <span className="absolute -top-2 -right-3 bg-rose-600 text-white text-xs rounded-full h-4 w-4 flex items-center justify-center">
+              {favoriteIds.size}
+            </span>
+          )}
         </Link>
       )}
       {canManage && (

@@ -1,11 +1,12 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
-import { useParams } from 'next/navigation';
+import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
 import { useAuth } from '@/components/AuthContext';
 import { useCart } from '@/components/CartContext';
+import { useFavorites } from '@/components/FavoritesContext';
 import { api } from '@/lib/api';
 
 interface Product {
@@ -43,8 +44,10 @@ function Stars({ value }: { value: number }) {
 
 export default function ProductDetailPage() {
   const params = useParams<{ id: string }>();
+  const router = useRouter();
   const { user } = useAuth();
   const { add } = useCart();
+  const { isFavorite, toggle } = useFavorites();
 
   const [product, setProduct] = useState<Product | null>(null);
   const [reviews, setReviews] = useState<Review[]>([]);
@@ -142,12 +145,34 @@ export default function ProductDetailPage() {
               )}
               <span className="text-2xl font-bold text-indigo-600">R$ {(product.price / 100).toFixed(2)}</span>
             </div>
-            <button
-              onClick={() => add({ id: product.id, name: product.name, price: product.price, quantity: 1 })}
-              className="w-full sm:w-auto px-6 py-2.5 bg-indigo-600 text-white rounded-md font-medium hover:bg-indigo-700 transition"
-            >
-              Adicionar ao carrinho
-            </button>
+            <div className="flex items-center gap-3">
+              <button
+                onClick={() => add({ id: product.id, name: product.name, price: product.price, quantity: 1 })}
+                className="flex-1 sm:flex-none px-6 py-2.5 bg-indigo-600 text-white rounded-md font-medium hover:bg-indigo-700 transition"
+              >
+                Adicionar ao carrinho
+              </button>
+              <button
+                onClick={() => (user ? toggle(product.id) : router.push('/login'))}
+                aria-label={isFavorite(product.id) ? 'Remover dos favoritos' : 'Adicionar aos favoritos'}
+                aria-pressed={isFavorite(product.id)}
+                className="h-11 w-11 shrink-0 rounded-md border border-gray-200 flex items-center justify-center hover:border-rose-300 transition"
+              >
+                <svg
+                  viewBox="0 0 24 24"
+                  className="h-5 w-5"
+                  fill={isFavorite(product.id) ? '#e11d48' : 'none'}
+                  stroke={isFavorite(product.id) ? '#e11d48' : 'currentColor'}
+                  strokeWidth={2}
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    d="M12 21s-6.716-4.35-9.428-8.06C.79 10.31 1.2 6.6 4.2 4.9c2.3-1.3 5-0.7 6.5 1.3l1.3 1.7 1.3-1.7c1.5-2 4.2-2.6 6.5-1.3 3 1.7 3.41 5.41 1.63 8.04C18.716 16.65 12 21 12 21z"
+                  />
+                </svg>
+              </button>
+            </div>
           </div>
         </div>
       </div>
