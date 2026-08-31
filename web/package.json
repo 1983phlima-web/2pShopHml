@@ -12,6 +12,7 @@
     "next": "^14.2.35",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
+    "recharts": "^2.13.0",
     "@opentelemetry/api": "^1.9.0",
     "@opentelemetry/sdk-trace-web": "^1.26.0",
     "@opentelemetry/instrumentation-fetch": "^0.53.0",

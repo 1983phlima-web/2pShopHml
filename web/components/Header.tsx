@@ -14,6 +14,8 @@ export function Header() {
   const cartCount = items.reduce((sum, i) => sum + i.quantity, 0);
 
   const canManage = user && ['SELLER', 'SYSTEM_ADMIN', 'GLOBAL_ADMIN'].includes(user.role);
+  const isSystemAdmin = user && ['SYSTEM_ADMIN', 'GLOBAL_ADMIN'].includes(user.role);
+  const isGlobalAdmin = user?.role === 'GLOBAL_ADMIN';
 
   const navLinks = (
     <>
@@ -30,10 +32,20 @@ export function Header() {
           Painel do Vendedor
         </Link>
       )}
+      {isSystemAdmin && (
+        <Link href="/admin/system" className="text-sm font-medium hover:text-indigo-600" onClick={() => setMenuOpen(false)}>
+          Admin Sistema
+        </Link>
+      )}
+      {isGlobalAdmin && (
+        <Link href="/admin/global" className="text-sm font-medium hover:text-indigo-600" onClick={() => setMenuOpen(false)}>
+          Admin Global
+        </Link>
+      )}
       <Link href="/checkout" className="text-sm font-medium hover:text-indigo-600 relative" onClick={() => setMenuOpen(false)}>
         Carrinho
         {cartCount > 0 && (
-          <span className="absolute -top-2 -right-3 bg-indigo-600 text-white text-xs rounded-full h-4 w-4 flex items-center justify-center">
+          <span className="absolute -top-2 -right-3 brand-bg text-white text-xs rounded-full h-4 w-4 flex items-center justify-center">
             {cartCount}
           </span>
         )}
@@ -65,7 +77,7 @@ export function Header() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between">
         <Link href="/" className="flex items-center gap-3 shrink-0">
           <Image src="/logo.png" alt="2pShop" width={546} height={633} className="h-14 w-auto" priority />
-          <span className="text-2xl font-extrabold text-indigo-600 tracking-tight">2pShop</span>
+          <span className="text-2xl font-extrabold brand-text tracking-tight">2pShop</span>
         </Link>
 
         {/* Desktop nav */}

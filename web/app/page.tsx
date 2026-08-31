@@ -4,6 +4,8 @@ import { useEffect, useState, useCallback, useMemo } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { ProductCard, Product } from '@/components/ProductCard';
+import { SellerDashboard } from '@/components/SellerDashboard';
+import { useAuth } from '@/components/AuthContext';
 import { api } from '@/lib/api';
 
 const CATEGORIES = [
@@ -16,9 +18,11 @@ const CATEGORIES = [
 ];
 
 export default function HomePage() {
+  const { user } = useAuth();
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [featuredIndex, setFeaturedIndex] = useState(0);
+  const canManage = user && ['SELLER', 'SYSTEM_ADMIN', 'GLOBAL_ADMIN'].includes(user.role);
 
   useEffect(() => {
     api('/products?limit=48')
@@ -64,6 +68,8 @@ export default function HomePage() {
 
   return (
     <div className="space-y-14">
+      {canManage && <SellerDashboard />}
+
       {/* Hero: Oferta do dia */}
       {offerProduct && (
         <section className="relative overflow-hidden rounded-2xl bg-gray-900 text-white grid md:grid-cols-[1.1fr_.9fr] min-h-[260px]">
@@ -81,7 +87,7 @@ export default function HomePage() {
             </div>
             <Link
               href={`/products/${offerProduct.id}`}
-              className="mt-6 inline-flex w-fit items-center gap-2 rounded-lg bg-indigo-600 px-5 py-2.5 text-sm font-bold hover:bg-indigo-500 transition"
+              className="mt-6 inline-flex w-fit items-center gap-2 rounded-lg brand-bg px-5 py-2.5 text-sm font-bold text-white transition"
             >
               Ver oferta →
             </Link>
@@ -123,7 +129,7 @@ export default function HomePage() {
         <section>
           <div className="flex items-end justify-between mb-4">
             <div>
-              <p className="text-xs font-extrabold uppercase tracking-[.17em] text-indigo-600">Destaque da semana</p>
+              <p className="text-xs font-extrabold uppercase tracking-[.17em] brand-text">Destaque da semana</p>
               <h2 className="text-xl font-extrabold mt-1">{featuredProduct.name}</h2>
             </div>
             <div className="flex items-center gap-2">
@@ -152,7 +158,7 @@ export default function HomePage() {
               </div>
               <Link
                 href={`/products/${featuredProduct.id}`}
-                className="mt-5 inline-flex w-fit items-center rounded-lg bg-indigo-600 px-4 py-2 text-xs font-bold hover:bg-indigo-500 transition"
+                className="mt-5 inline-flex w-fit items-center rounded-lg brand-bg px-4 py-2 text-xs font-bold text-white transition"
               >
                 Ver produto →
               </Link>
@@ -176,7 +182,7 @@ export default function HomePage() {
       <section id="vitrine">
         <div className="flex items-end justify-between mb-4">
           <h2 className="text-lg font-bold">Vitrine</h2>
-          <Link href="/products" className="text-sm font-medium text-indigo-600 hover:underline">
+          <Link href="/products" className="text-sm font-medium brand-text hover:underline">
             Ver todos os produtos →
           </Link>
         </div>

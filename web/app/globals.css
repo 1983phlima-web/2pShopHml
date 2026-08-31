@@ -2,8 +2,20 @@
 @tailwind components;
 @tailwind utilities;
 
+:root {
+  --brand-primary: #4f46e5;
+  --brand-primary-dark: #4338ca;
+  --brand-accent: #818cf8;
+  --brand-dark: #111827;
+}
+
 @layer base {
   body {
     @apply antialiased;
   }
 }
+
+.brand-bg { background-color: var(--brand-primary); }
+.brand-bg:hover { background-color: var(--brand-primary-dark); }
+.brand-text { color: var(--brand-primary); }
+.brand-dark-bg { background-color: var(--brand-dark); }

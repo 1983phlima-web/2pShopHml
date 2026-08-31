@@ -12,6 +12,14 @@ import (
 	checkoutApp "github.com/2pshop/2pshop/internal/checkout/application"
 	checkoutHTTP "github.com/2pshop/2pshop/internal/checkout/transport/http"
 
+	analyticsPG "github.com/2pshop/2pshop/internal/analytics/adapters/postgres"
+	analyticsApp "github.com/2pshop/2pshop/internal/analytics/application"
+	analyticsHTTP "github.com/2pshop/2pshop/internal/analytics/transport/http"
+
+	settingsPG "github.com/2pshop/2pshop/internal/settings/adapters/postgres"
+	settingsApp "github.com/2pshop/2pshop/internal/settings/application"
+	settingsHTTP "github.com/2pshop/2pshop/internal/settings/transport/http"
+
 	catalogPG "github.com/2pshop/2pshop/internal/catalog/adapters/postgres"
 	catalogApp "github.com/2pshop/2pshop/internal/catalog/application"
 	catalogHTTP "github.com/2pshop/2pshop/internal/catalog/transport/http"
@@ -115,6 +123,8 @@ func main() {
 	reviewsRepo := reviewsPG.NewRepository(db)
 	inventoryRepo := inventoryPG.NewRepository(db)
 	ordersRepo := ordersPG.NewRepository(db)
+	settingsRepo := settingsPG.NewRepository(db)
+	analyticsRepo := analyticsPG.NewRepository(db, version)
 
 	// Services
 	tenancyService := tenancyApp.NewService(tenancyRepo)
@@ -124,6 +134,8 @@ func main() {
 	reviewsService := reviewsApp.NewService(reviewsRepo)
 	inventoryService := inventoryApp.NewService(inventoryRepo)
 	ordersService := ordersApp.NewService(ordersRepo, nil)
+	settingsService := settingsApp.NewService(settingsRepo)
+	analyticsService := analyticsApp.NewService(analyticsRepo)
 	paymentsService := paymentsApp.NewService(map[string]paymentsDomain.Provider{
 		"stripe": paymentsMock.New(), // sandbox provider for HML; swap for a real Stripe adapter in production.
 	})
@@ -172,6 +184,8 @@ func main() {
 	reviewsHandler := reviewsHTTP.NewHandler(reviewsService)
 	ordersHandler := ordersHTTP.NewHandler(ordersService)
 	checkoutHandler := checkoutHTTP.NewHandler(checkoutService)
+	settingsHandler := settingsHTTP.NewHandler(settingsService)
+	analyticsHandler := analyticsHTTP.NewHandler(analyticsService)
 
 	const (
 		roleSeller      = "SELLER"
@@ -192,10 +206,11 @@ func main() {
 		r.Group(func(r chi.Router) {
 			r.Use(httpmw.TenantResolver(tenancyService))
 
-			// Public within the tenant: auth, browsing catalog & reviews.
+			// Public within the tenant: auth, browsing catalog & reviews, active theme.
 			identityHandler.Routes(r)
 			catalogHandler.PublicRoutes(r)
 			reviewsHandler.PublicRoutes(r)
+			settingsHandler.PublicRoutes(r)
 
 			// Authenticated routes.
 			r.Group(func(r chi.Router) {
@@ -206,10 +221,24 @@ func main() {
 				ordersHandler.Routes(r)
 				checkoutHandler.Routes(r)
 
-				// Catalog management: Seller, System Admin or Global Admin.
+				// Seller (and any admin role): catalog management + sales analytics.
 				r.Group(func(r chi.Router) {
 					r.Use(httpmw.RequireRole(roleSeller, roleSystemAdmin, roleGlobalAdmin))
 					catalogHandler.ManageRoutes(r)
+					analyticsHandler.SellerRoutes(r)
+				})
+
+				// System Admin + Global Admin: platform-wide metrics and palette config.
+				r.Group(func(r chi.Router) {
+					r.Use(httpmw.RequireRole(roleSystemAdmin, roleGlobalAdmin))
+					analyticsHandler.AdminRoutes(r)
+					settingsHandler.AdminRoutes(r)
+				})
+
+				// Global Admin only: infra-level health report.
+				r.Group(func(r chi.Router) {
+					r.Use(httpmw.RequireRole(roleGlobalAdmin))
+					analyticsHandler.GlobalRoutes(r)
 				})
 			})
 		})
