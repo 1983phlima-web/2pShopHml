@@ -4,6 +4,8 @@ import { useEffect, useState } from 'react';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from 'recharts';
 import { api } from '@/lib/api';
 import { PALETTES, applyPalette } from '@/lib/theme';
+import { LANGUAGES } from '@/lib/i18n';
+import { useLanguage } from './LanguageContext';
 
 interface AdminSummary {
   users_by_role: Record<string, number>;
@@ -56,6 +58,8 @@ export function AdminSummaryPanels({ canEditTheme }: { canEditTheme: boolean }) 
   const [summary, setSummary] = useState<AdminSummary | null>(null);
   const [palette, setPalette] = useState<string>('indigo');
   const [savingPalette, setSavingPalette] = useState(false);
+  const { lang, setLang } = useLanguage();
+  const [savingLang, setSavingLang] = useState(false);
 
   useEffect(() => {
     api('/analytics/admin-summary').then(async (res) => {
@@ -78,6 +82,19 @@ export function AdminSummaryPanels({ canEditTheme }: { canEditTheme: boolean }) 
       await api('/settings/theme', { method: 'PUT', body: JSON.stringify({ palette: key }) });
     } finally {
       setSavingPalette(false);
+    }
+  }
+
+  async function selectLanguage(code: 'pt' | 'es' | 'en' | 'zh') {
+    if (!canEditTheme) {
+      setLang(code, false);
+      return;
+    }
+    setSavingLang(true);
+    try {
+      setLang(code, true);
+    } finally {
+      setSavingLang(false);
     }
   }
 
@@ -132,6 +149,33 @@ export function AdminSummaryPanels({ canEditTheme }: { canEditTheme: boolean }) 
             </button>
           ))}
         </div>
+      </section>
+
+      <section>
+        <h2 className="text-lg font-bold mb-1">Idioma do site</h2>
+        <p className="text-sm text-gray-500 mb-4">
+          {canEditTheme
+            ? 'Controla o idioma exibido para todos os visitantes (menus, botões, alertas).'
+            : 'Somente administradores podem salvar o idioma (você pode pré-visualizar).'}
+          {savingLang && ' Salvando...'}
+        </p>
+        <div className="flex flex-wrap gap-2">
+          {LANGUAGES.map((l) => (
+            <button
+              key={l.code}
+              onClick={() => selectLanguage(l.code)}
+              className={`text-sm font-medium px-4 py-2 rounded-lg border-2 transition ${
+                lang === l.code ? 'border-gray-900 bg-gray-900 text-white' : 'border-gray-100 hover:border-gray-300'
+              }`}
+            >
+              {l.label}
+            </button>
+          ))}
+        </div>
+        <p className="text-xs text-gray-400 mt-3">
+          Cobertura atual: menu de navegação e ações principais. Demais textos seguem em português nesta entrega —
+          a infraestrutura de tradução está pronta para expandir a cobertura.
+        </p>
       </section>
     </div>
   );

@@ -2,7 +2,7 @@
 
 import { createContext, useContext, useState, useCallback, useEffect } from 'react';
 import { api } from '@/lib/api';
-import { AuthUser, getStoredUser, storeSession, clearSession } from '@/lib/auth';
+import { AuthUser, getStoredUser, getToken, storeSession, clearSession } from '@/lib/auth';
 
 interface AuthContextType {
   user: AuthUser | null;
@@ -11,6 +11,7 @@ interface AuthContextType {
   login: (email: string, password: string) => Promise<AuthUser | null>;
   register: (name: string, email: string, password: string) => Promise<AuthUser | null>;
   logout: () => void;
+  updateUser: (partial: Partial<AuthUser>) => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -75,8 +76,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setUser(null);
   }, []);
 
+  const updateUser = useCallback((partial: Partial<AuthUser>) => {
+    setUser((prev) => {
+      if (!prev) return prev;
+      const next = { ...prev, ...partial };
+      const token = getToken();
+      if (token) storeSession(token, next);
+      return next;
+    });
+  }, []);
+
   return (
-    <AuthContext.Provider value={{ user, loading, error, login, register, logout }}>
+    <AuthContext.Provider value={{ user, loading, error, login, register, logout, updateUser }}>
       {children}
     </AuthContext.Provider>
   );

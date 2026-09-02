@@ -46,6 +46,33 @@ func (r *Repository) ListByProduct(ctx context.Context, tenantID, productID stri
 	return reviews, rows.Err()
 }
 
+// ListByUser returns every review the given user has written — the
+// "Testemunhos" section of "Meus Comentários" — including the product
+// name via a join, so the frontend doesn't need extra fetches.
+func (r *Repository) ListByUser(ctx context.Context, tenantID, userID string, limit, offset int) ([]*domain.Review, error) {
+	rows, err := r.db.Pool.Query(ctx, `
+		SELECT rv.id, rv.tenant_id, rv.product_id, p.name, rv.user_id, rv.user_name, rv.rating, rv.comment, rv.created_at
+		FROM product_reviews rv
+		JOIN products p ON p.id = rv.product_id AND p.tenant_id = rv.tenant_id
+		WHERE rv.tenant_id=$1 AND rv.user_id=$2
+		ORDER BY rv.created_at DESC LIMIT $3 OFFSET $4
+	`, tenantID, userID, limit, offset)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var reviews []*domain.Review
+	for rows.Next() {
+		var rv domain.Review
+		if err := rows.Scan(&rv.ID, &rv.TenantID, &rv.ProductID, &rv.ProductName, &rv.UserID, &rv.UserName, &rv.Rating, &rv.Comment, &rv.CreatedAt); err != nil {
+			return nil, err
+		}
+		reviews = append(reviews, &rv)
+	}
+	return reviews, rows.Err()
+}
+
 func (r *Repository) Summary(ctx context.Context, tenantID, productID string) (domain.Summary, error) {
 	var avg *float64
 	var count int

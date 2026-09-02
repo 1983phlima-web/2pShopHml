@@ -18,15 +18,18 @@ func NewHandler(service *application.Service) *Handler {
 	return &Handler{service: service}
 }
 
-// PublicRoutes: reading the active theme requires no authentication — the
-// storefront applies it for every visitor, logged in or not.
+// PublicRoutes: reading the active theme/language requires no
+// authentication — the storefront applies them for every visitor.
 func (h *Handler) PublicRoutes(r chi.Router) {
 	r.Get("/settings/theme", h.GetTheme)
+	r.Get("/settings/language", h.GetLanguage)
 }
 
-// AdminRoutes: only System/Global Admin can change the palette.
+// AdminRoutes: only System/Global Admin can change the palette or the
+// site-wide language.
 func (h *Handler) AdminRoutes(r chi.Router) {
 	r.Put("/settings/theme", h.SetTheme)
+	r.Put("/settings/language", h.SetLanguage)
 }
 
 func (h *Handler) GetTheme(w http.ResponseWriter, r *http.Request) {
@@ -51,6 +54,34 @@ func (h *Handler) SetTheme(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err := h.service.SetTheme(r.Context(), tenantID, req.Palette); err != nil {
+		respondError(w, err)
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
+}
+
+func (h *Handler) GetLanguage(w http.ResponseWriter, r *http.Request) {
+	tenantID := httpmw.TenantFromContext(r.Context())
+	lang, err := h.service.GetLanguage(r.Context(), tenantID)
+	if err != nil {
+		respondError(w, err)
+		return
+	}
+	respondJSON(w, http.StatusOK, lang)
+}
+
+type setLanguageRequest struct {
+	Code string `json:"code"`
+}
+
+func (h *Handler) SetLanguage(w http.ResponseWriter, r *http.Request) {
+	tenantID := httpmw.TenantFromContext(r.Context())
+	var req setLanguageRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil || req.Code == "" {
+		respondError(w, errors.New(errors.ErrInvalidInput).WithDetail("field", "code"))
+		return
+	}
+	if err := h.service.SetLanguage(r.Context(), tenantID, req.Code); err != nil {
 		respondError(w, err)
 		return
 	}

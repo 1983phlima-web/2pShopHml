@@ -39,3 +39,28 @@ func (s *Service) SetTheme(ctx context.Context, tenantID, palette string) error 
 	}
 	return nil
 }
+
+var defaultLanguage = map[string]any{"code": "pt"}
+
+// GetLanguage never fails the caller with a 404 — a tenant without a
+// saved preference simply gets Portuguese.
+func (s *Service) GetLanguage(ctx context.Context, tenantID string) (map[string]any, error) {
+	setting, err := s.repo.Get(ctx, tenantID, "language")
+	if err != nil {
+		if errors.IsNotFound(err) {
+			return defaultLanguage, nil
+		}
+		return nil, errors.Wrap(errors.ErrInternal, "failed to load language", err)
+	}
+	if setting.Value == nil || setting.Value["code"] == nil {
+		return defaultLanguage, nil
+	}
+	return setting.Value, nil
+}
+
+func (s *Service) SetLanguage(ctx context.Context, tenantID, code string) error {
+	if err := s.repo.Set(ctx, tenantID, "language", map[string]any{"code": code}); err != nil {
+		return errors.Wrap(errors.ErrInternal, "failed to save language", err)
+	}
+	return nil
+}

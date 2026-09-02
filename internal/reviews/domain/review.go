@@ -9,14 +9,15 @@ import (
 // Review represents a customer's comment and rating on a product —
 // the "comentários de compra" shown on the product page.
 type Review struct {
-	ID        string    `json:"id"`
-	TenantID  string    `json:"tenant_id"`
-	ProductID string    `json:"product_id"`
-	UserID    string    `json:"user_id"`
-	UserName  string    `json:"user_name"`
-	Rating    int       `json:"rating"` // 1-5
-	Comment   string    `json:"comment"`
-	CreatedAt time.Time `json:"created_at"`
+	ID          string    `json:"id"`
+	TenantID    string    `json:"tenant_id"`
+	ProductID   string    `json:"product_id"`
+	ProductName string    `json:"product_name,omitempty"`
+	UserID      string    `json:"user_id"`
+	UserName    string    `json:"user_name"`
+	Rating      int       `json:"rating"` // 1-5
+	Comment     string    `json:"comment"`
+	CreatedAt   time.Time `json:"created_at"`
 }
 
 func NewReview(tenantID, productID, userID, userName, comment string, rating int) *Review {

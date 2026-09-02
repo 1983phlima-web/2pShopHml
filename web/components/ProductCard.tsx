@@ -1,11 +1,11 @@
 'use client';
 
 import Image from 'next/image';
-import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useCart } from './CartContext';
 import { useFavorites } from './FavoritesContext';
 import { useAuth } from './AuthContext';
+import { useProductModal } from './ProductModalContext';
 
 export interface Product {
   id: string;
@@ -46,6 +46,7 @@ export function ProductCard({ product }: { product: Product }) {
   const { isFavorite, toggle } = useFavorites();
   const { user } = useAuth();
   const router = useRouter();
+  const { open } = useProductModal();
   const image = product.attributes?.image;
   const badge = product.attributes?.badge;
   const compareAt = product.attributes?.compare_at;
@@ -63,7 +64,7 @@ export function ProductCard({ product }: { product: Product }) {
 
   return (
     <div className="bg-white rounded-xl border border-gray-100 overflow-hidden hover:shadow-md transition group">
-      <Link href={`/products/${product.id}`} className="block relative">
+      <div className="block relative cursor-pointer" onClick={() => open(product.id)}>
         <div className="h-40 bg-gray-100 overflow-hidden relative">
           {image ? (
             <Image
@@ -90,26 +91,32 @@ export function ProductCard({ product }: { product: Product }) {
         >
           <HeartIcon filled={favorited} />
         </button>
-      </Link>
+      </div>
       <div className="p-4">
-        <Link href={`/products/${product.id}`}>
-          <h3 className="font-semibold text-gray-900 truncate hover:text-indigo-600">{product.name}</h3>
-        </Link>
+        <h3
+          onClick={() => open(product.id)}
+          className="font-semibold text-gray-900 truncate hover:text-indigo-600 cursor-pointer"
+        >
+          {product.name}
+        </h3>
         <p className="text-sm text-gray-500 line-clamp-2 mt-1">{product.description}</p>
-        <div className="mt-4 flex items-center justify-between">
-          <div>
+        <div className="mt-4 flex items-center justify-between gap-2">
+          <div className="min-w-0">
             {compareAt && compareAt > product.price && (
-              <span className="text-xs text-gray-400 line-through block">R$ {(compareAt / 100).toFixed(2)}</span>
+              <span className="text-xs text-gray-400 line-through block whitespace-nowrap">R$ {(compareAt / 100).toFixed(2)}</span>
             )}
-            <span className="text-lg font-bold text-indigo-600">
+            <span className="text-lg font-bold text-indigo-600 whitespace-nowrap">
               R$ {(product.price / 100).toFixed(2)}
             </span>
           </div>
           <button
             onClick={() => add({ id: product.id, name: product.name, price: product.price, quantity: 1 })}
-            className="px-3 py-1.5 bg-indigo-50 text-indigo-700 text-sm font-medium rounded-md hover:bg-indigo-100 transition"
+            aria-label="Adicionar ao carrinho"
+            className="shrink-0 h-9 w-9 flex items-center justify-center bg-indigo-50 text-indigo-700 rounded-md hover:bg-indigo-100 transition"
           >
-            Adicionar
+            <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
+            </svg>
           </button>
         </div>
       </div>

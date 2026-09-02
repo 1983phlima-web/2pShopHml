@@ -68,3 +68,20 @@ func (s *Service) GetUser(ctx context.Context, tenantID, id string) (*domain.Use
 	}
 	return user, nil
 }
+
+// maxAvatarLength guards against abusive uploads — ~700KB of base64 is
+// generous for a profile picture while keeping row size sane.
+const maxAvatarLength = 700_000
+
+func (s *Service) UpdateAvatar(ctx context.Context, tenantID, userID, avatar string) error {
+	if avatar == "" {
+		return errors.New(errors.ErrInvalidInput).WithDetail("field", "avatar")
+	}
+	if len(avatar) > maxAvatarLength {
+		return errors.New(errors.ErrInvalidInput).WithDetail("reason", "avatar too large")
+	}
+	if err := s.repo.UpdateAvatar(ctx, tenantID, userID, avatar); err != nil {
+		return errors.Wrap(errors.ErrInternal, "failed to update avatar", err)
+	}
+	return nil
+}

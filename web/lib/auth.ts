@@ -3,6 +3,8 @@ export interface AuthUser {
   email: string;
   name: string;
   role: 'SELLER' | 'BUYER' | 'SYSTEM_ADMIN' | 'GLOBAL_ADMIN';
+  avatar?: string;
+  phone?: string;
   active: boolean;
 }
 

@@ -11,6 +11,7 @@ type Repository interface {
 	GetByID(ctx context.Context, tenantID, id string) (*domain.User, error)
 	GetByEmail(ctx context.Context, tenantID, email string) (*domain.User, error)
 	ListByTenant(ctx context.Context, tenantID string, limit, offset int) ([]*domain.User, error)
+	UpdateAvatar(ctx context.Context, tenantID, userID, avatar string) error
 }
 
 type TokenService interface {

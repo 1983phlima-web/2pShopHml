@@ -3,7 +3,10 @@ import './globals.css';
 import { CartProvider } from '@/components/CartContext';
 import { AuthProvider } from '@/components/AuthContext';
 import { FavoritesProvider } from '@/components/FavoritesContext';
+import { ProductModalProvider } from '@/components/ProductModalContext';
+import { ProductModal } from '@/components/ProductModal';
 import { ThemeProvider } from '@/components/ThemeProvider';
+import { LanguageProvider } from '@/components/LanguageContext';
 import { Header } from '@/components/Header';
 import { OtelInit } from '@/lib/otel';
 import { WebVitals } from '@/components/WebVitals';
@@ -23,18 +26,23 @@ export default function RootLayout({
       <body className="bg-gray-50 text-gray-900 min-h-screen">
         <OtelInit />
         <WebVitals />
-        <ThemeProvider>
-          <AuthProvider>
-            <FavoritesProvider>
-              <CartProvider>
-                <Header />
-                <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-                  {children}
-                </main>
-              </CartProvider>
-            </FavoritesProvider>
-          </AuthProvider>
-        </ThemeProvider>
+        <LanguageProvider>
+          <ThemeProvider>
+            <AuthProvider>
+              <FavoritesProvider>
+                <CartProvider>
+                  <ProductModalProvider>
+                    <Header />
+                    <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+                      {children}
+                    </main>
+                    <ProductModal />
+                  </ProductModalProvider>
+                </CartProvider>
+              </FavoritesProvider>
+            </AuthProvider>
+          </ThemeProvider>
+        </LanguageProvider>
       </body>
     </html>
   );

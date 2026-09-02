@@ -28,6 +28,7 @@ func (h *Handler) Routes(r chi.Router) {
 // ProtectedRoutes registers routes that require a valid Bearer token.
 func (h *Handler) ProtectedRoutes(r chi.Router) {
 	r.Get("/auth/me", h.Me)
+	r.Put("/auth/me/avatar", h.UpdateAvatar)
 }
 
 type registerRequest struct {
@@ -51,6 +52,8 @@ type userResponse struct {
 	Email  string      `json:"email"`
 	Name   string      `json:"name"`
 	Role   domain.Role `json:"role"`
+	Avatar string      `json:"avatar"`
+	Phone  string      `json:"phone,omitempty"`
 	Active bool        `json:"active"`
 }
 
@@ -107,8 +110,30 @@ func (h *Handler) Me(w http.ResponseWriter, r *http.Request) {
 	respondJSON(w, http.StatusOK, toUserResponse(user))
 }
 
+type updateAvatarRequest struct {
+	Avatar string `json:"avatar"`
+}
+
+func (h *Handler) UpdateAvatar(w http.ResponseWriter, r *http.Request) {
+	claims := httpmw.ClaimsFromContext(r.Context())
+	if claims == nil {
+		respondError(w, errors.New(errors.ErrUnauthorized))
+		return
+	}
+	var req updateAvatarRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		respondError(w, errors.New(errors.ErrInvalidInput).WithDetail("reason", "invalid json"))
+		return
+	}
+	if err := h.service.UpdateAvatar(r.Context(), claims.TenantID, claims.UserID, req.Avatar); err != nil {
+		respondError(w, err)
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
+}
+
 func toUserResponse(u *domain.User) userResponse {
-	return userResponse{ID: u.ID, Email: u.Email, Name: u.Name, Role: u.Role, Active: u.Active}
+	return userResponse{ID: u.ID, Email: u.Email, Name: u.Name, Role: u.Role, Avatar: u.Avatar, Phone: u.Phone, Active: u.Active}
 }
 
 func respondJSON(w http.ResponseWriter, status int, data any) {

@@ -26,6 +26,7 @@ func (h *Handler) PublicRoutes(r chi.Router) {
 // ProtectedRoutes: posting a review requires an authenticated buyer.
 func (h *Handler) ProtectedRoutes(r chi.Router) {
 	r.Post("/products/{id}/reviews", h.Create)
+	r.Get("/reviews/mine", h.ListMine)
 }
 
 type createReviewRequest struct {
@@ -40,11 +41,40 @@ type listReviewsResponse struct {
 }
 
 type reviewResponse struct {
-	ID        string `json:"id"`
-	UserName  string `json:"user_name"`
-	Rating    int    `json:"rating"`
-	Comment   string `json:"comment"`
-	CreatedAt string `json:"created_at"`
+	ID          string `json:"id"`
+	ProductID   string `json:"product_id,omitempty"`
+	ProductName string `json:"product_name,omitempty"`
+	UserName    string `json:"user_name"`
+	Rating      int    `json:"rating"`
+	Comment     string `json:"comment"`
+	CreatedAt   string `json:"created_at"`
+}
+
+func (h *Handler) ListMine(w http.ResponseWriter, r *http.Request) {
+	tenantID := httpmw.TenantFromContext(r.Context())
+	claims := httpmw.ClaimsFromContext(r.Context())
+	if claims == nil {
+		respondError(w, errors.New(errors.ErrUnauthorized))
+		return
+	}
+	reviews, err := h.service.ListMyReviews(r.Context(), tenantID, claims.UserID, 50, 0)
+	if err != nil {
+		respondError(w, err)
+		return
+	}
+	data := make([]reviewResponse, 0, len(reviews))
+	for _, rv := range reviews {
+		data = append(data, reviewResponse{
+			ID:          rv.ID,
+			ProductID:   rv.ProductID,
+			ProductName: rv.ProductName,
+			UserName:    rv.UserName,
+			Rating:      rv.Rating,
+			Comment:     rv.Comment,
+			CreatedAt:   rv.CreatedAt.Format("2006-01-02T15:04:05Z07:00"),
+		})
+	}
+	respondJSON(w, http.StatusOK, data)
 }
 
 func (h *Handler) Create(w http.ResponseWriter, r *http.Request) {

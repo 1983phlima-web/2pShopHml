@@ -20,6 +20,18 @@ import (
 	favoritesApp "github.com/2pshop/2pshop/internal/favorites/application"
 	favoritesHTTP "github.com/2pshop/2pshop/internal/favorites/transport/http"
 
+	loyaltyPG "github.com/2pshop/2pshop/internal/loyalty/adapters/postgres"
+	loyaltyApp "github.com/2pshop/2pshop/internal/loyalty/application"
+	loyaltyHTTP "github.com/2pshop/2pshop/internal/loyalty/transport/http"
+
+	questionsPG "github.com/2pshop/2pshop/internal/questions/adapters/postgres"
+	questionsApp "github.com/2pshop/2pshop/internal/questions/application"
+	questionsHTTP "github.com/2pshop/2pshop/internal/questions/transport/http"
+
+	exchangesPG "github.com/2pshop/2pshop/internal/exchanges/adapters/postgres"
+	exchangesApp "github.com/2pshop/2pshop/internal/exchanges/application"
+	exchangesHTTP "github.com/2pshop/2pshop/internal/exchanges/transport/http"
+
 	settingsPG "github.com/2pshop/2pshop/internal/settings/adapters/postgres"
 	settingsApp "github.com/2pshop/2pshop/internal/settings/application"
 	settingsHTTP "github.com/2pshop/2pshop/internal/settings/transport/http"
@@ -130,6 +142,9 @@ func main() {
 	settingsRepo := settingsPG.NewRepository(db)
 	analyticsRepo := analyticsPG.NewRepository(db, version)
 	favoritesRepo := favoritesPG.NewRepository(db)
+	loyaltyRepo := loyaltyPG.NewRepository(db)
+	questionsRepo := questionsPG.NewRepository(db)
+	exchangesRepo := exchangesPG.NewRepository(db)
 
 	// Services
 	tenancyService := tenancyApp.NewService(tenancyRepo)
@@ -142,6 +157,9 @@ func main() {
 	settingsService := settingsApp.NewService(settingsRepo)
 	analyticsService := analyticsApp.NewService(analyticsRepo)
 	favoritesService := favoritesApp.NewService(favoritesRepo)
+	loyaltyService := loyaltyApp.NewService(loyaltyRepo)
+	questionsService := questionsApp.NewService(questionsRepo)
+	exchangesService := exchangesApp.NewService(exchangesRepo)
 	paymentsService := paymentsApp.NewService(map[string]paymentsDomain.Provider{
 		"stripe": paymentsMock.New(), // sandbox provider for HML; swap for a real Stripe adapter in production.
 	})
@@ -193,6 +211,9 @@ func main() {
 	settingsHandler := settingsHTTP.NewHandler(settingsService)
 	analyticsHandler := analyticsHTTP.NewHandler(analyticsService)
 	favoritesHandler := favoritesHTTP.NewHandler(favoritesService)
+	loyaltyHandler := loyaltyHTTP.NewHandler(loyaltyService)
+	questionsHandler := questionsHTTP.NewHandler(questionsService)
+	exchangesHandler := exchangesHTTP.NewHandler(exchangesService)
 
 	const (
 		roleSeller      = "SELLER"
@@ -217,6 +238,7 @@ func main() {
 			identityHandler.Routes(r)
 			catalogHandler.PublicRoutes(r)
 			reviewsHandler.PublicRoutes(r)
+			questionsHandler.PublicRoutes(r)
 			settingsHandler.PublicRoutes(r)
 
 			// Authenticated routes.
@@ -228,12 +250,16 @@ func main() {
 				ordersHandler.Routes(r)
 				checkoutHandler.Routes(r)
 				favoritesHandler.Routes(r)
+				loyaltyHandler.Routes(r)
+				questionsHandler.ProtectedRoutes(r)
+				exchangesHandler.Routes(r)
 
 				// Seller (and any admin role): catalog management + sales analytics.
 				r.Group(func(r chi.Router) {
 					r.Use(httpmw.RequireRole(roleSeller, roleSystemAdmin, roleGlobalAdmin))
 					catalogHandler.ManageRoutes(r)
 					analyticsHandler.SellerRoutes(r)
+					questionsHandler.SellerRoutes(r)
 				})
 
 				// System Admin + Global Admin: platform-wide metrics and palette config.

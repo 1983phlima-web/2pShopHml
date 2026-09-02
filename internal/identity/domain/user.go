@@ -1,6 +1,8 @@
 package domain
 
 import (
+	"math/rand"
+	"strconv"
 	"time"
 
 	"github.com/google/uuid"
@@ -14,9 +16,21 @@ type User struct {
 	Name      string    `json:"name"`
 	Role      Role      `json:"role"`
 	Password  string    `json:"-"`
+	Avatar    string    `json:"avatar"` // "preset:N" (1-12) or a base64 data URI
+	Phone     string    `json:"phone,omitempty"`
 	Active    bool      `json:"active"`
 	CreatedAt time.Time `json:"created_at"`
 	UpdatedAt time.Time `json:"updated_at"`
+}
+
+// PresetAvatarCount is the number of built-in avatar options offered at
+// signup and in the profile popup.
+const PresetAvatarCount = 12
+
+// randomPresetAvatar assigns a random built-in avatar to every new user,
+// so nobody starts with a blank profile picture.
+func randomPresetAvatar() string {
+	return "preset:" + strconv.Itoa(rand.Intn(PresetAvatarCount)+1)
 }
 
 // Role represents one of the 4 RBAC roles of the marketplace.
@@ -48,6 +62,7 @@ func NewUser(tenantID, email, name string, role Role) *User {
 		Email:     email,
 		Name:      name,
 		Role:      role,
+		Avatar:    randomPresetAvatar(),
 		Active:    true,
 		CreatedAt: now,
 		UpdatedAt: now,

@@ -38,3 +38,13 @@ func (s *Service) ListReviews(ctx context.Context, tenantID, productID string, l
 	}
 	return reviews, summary, nil
 }
+
+// ListMyReviews returns every review the user has written — the
+// "Testemunhos" tab of "Meus Comentários".
+func (s *Service) ListMyReviews(ctx context.Context, tenantID, userID string, limit, offset int) ([]*domain.Review, error) {
+	reviews, err := s.repo.ListByUser(ctx, tenantID, userID, limit, offset)
+	if err != nil {
+		return nil, errors.Wrap(errors.ErrInternal, "failed to list my reviews", err)
+	}
+	return reviews, nil
+}
