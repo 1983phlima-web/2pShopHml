@@ -158,7 +158,7 @@ export function ProfilePopup({ onClose }: { onClose: () => void }) {
 
               <div>
                 <p className="text-xs font-semibold text-gray-500 mb-2">Badges conquistadas</p>
-                {loyalty?.badges.length ? (
+                {loyalty?.badges?.length ? (
                   <div className="flex flex-wrap gap-2">
                     {loyalty.badges.map((b) => (
                       <span key={b.key} className="text-xs font-medium bg-amber-50 text-amber-700 px-2.5 py-1 rounded-full">
