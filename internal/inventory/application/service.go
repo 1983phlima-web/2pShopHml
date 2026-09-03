@@ -44,3 +44,24 @@ func (s *Service) Release(ctx context.Context, tenantID, reservationID string) e
 	}
 	return nil
 }
+
+// ListStock returns stock for every product in the tenant's catalog —
+// powers the seller's stock management panel.
+func (s *Service) ListStock(ctx context.Context, tenantID string) ([]domain.StockItem, error) {
+	items, err := s.repo.ListByTenant(ctx, tenantID)
+	if err != nil {
+		return nil, errors.Wrap(errors.ErrInternal, "failed to list stock", err)
+	}
+	return items, nil
+}
+
+// SetStock sets the absolute quantity for a product (not a delta).
+func (s *Service) SetStock(ctx context.Context, tenantID, productID string, quantity int) error {
+	if quantity < 0 {
+		return errors.New(errors.ErrInvalidInput).WithDetail("field", "quantity")
+	}
+	if err := s.repo.UpdateStock(ctx, tenantID, productID, quantity); err != nil {
+		return errors.Wrap(errors.ErrInternal, "failed to update stock", err)
+	}
+	return nil
+}

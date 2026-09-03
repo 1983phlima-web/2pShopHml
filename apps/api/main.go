@@ -47,6 +47,7 @@ import (
 
 	inventoryPG "github.com/2pshop/2pshop/internal/inventory/adapters/postgres"
 	inventoryApp "github.com/2pshop/2pshop/internal/inventory/application"
+	inventoryHTTP "github.com/2pshop/2pshop/internal/inventory/transport/http"
 
 	ordersPG "github.com/2pshop/2pshop/internal/orders/adapters/postgres"
 	ordersApp "github.com/2pshop/2pshop/internal/orders/application"
@@ -213,6 +214,7 @@ func main() {
 	favoritesHandler := favoritesHTTP.NewHandler(favoritesService)
 	loyaltyHandler := loyaltyHTTP.NewHandler(loyaltyService)
 	questionsHandler := questionsHTTP.NewHandler(questionsService)
+	inventoryHandler := inventoryHTTP.NewHandler(inventoryService)
 	exchangesHandler := exchangesHTTP.NewHandler(exchangesService)
 
 	const (
@@ -260,6 +262,9 @@ func main() {
 					catalogHandler.ManageRoutes(r)
 					analyticsHandler.SellerRoutes(r)
 					questionsHandler.SellerRoutes(r)
+					inventoryHandler.SellerRoutes(r)
+					ordersHandler.SellerRoutes(r)
+					exchangesHandler.SellerRoutes(r)
 				})
 
 				// System Admin + Global Admin: platform-wide metrics and palette config.

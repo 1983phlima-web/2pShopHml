@@ -1,36 +1,21 @@
 'use client';
 
-import { useEffect, useState, useRef } from 'react';
+import { useState, useRef } from 'react';
 import { useAuth } from './AuthContext';
+import { useLoyalty } from './LoyaltyContext';
 import { Avatar } from './Avatar';
 import { AVATAR_PRESETS } from '@/lib/avatars';
 import { ROLE_LABELS } from '@/lib/auth';
 import { api } from '@/lib/api';
 
-interface LoyaltyProfile {
-  xp: number;
-  coins: number;
-  badges: { key: string; label: string; earned_at: string }[];
-  period_15day_spend: number;
-  period_15day_target: number;
-  period_month_spend: number;
-  period_month_target: number;
-}
-
 const MAX_AVATAR_BYTES = 500_000; // ~500KB before base64 overhead
 
 export function ProfilePopup({ onClose }: { onClose: () => void }) {
   const { user, updateUser } = useAuth();
-  const [loyalty, setLoyalty] = useState<LoyaltyProfile | null>(null);
+  const { loyalty } = useLoyalty();
   const [pickerOpen, setPickerOpen] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
-
-  useEffect(() => {
-    api('/loyalty/profile').then(async (res) => {
-      if (res.ok) setLoyalty(await res.json());
-    });
-  }, []);
 
   async function selectPreset(id: number) {
     const avatar = `preset:${id}`;

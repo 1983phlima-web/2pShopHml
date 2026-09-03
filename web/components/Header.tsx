@@ -8,6 +8,7 @@ import { useCart } from './CartContext';
 import { useFavorites } from './FavoritesContext';
 import { Avatar } from './Avatar';
 import { ProfilePopup } from './ProfilePopup';
+import { useLoyalty } from './LoyaltyContext';
 import { useLanguage } from './LanguageContext';
 import { ROLE_LABELS } from '@/lib/auth';
 
@@ -15,6 +16,7 @@ export function Header() {
   const { user, logout } = useAuth();
   const { items } = useCart();
   const { ids: favoriteIds } = useFavorites();
+  const { loyalty } = useLoyalty();
   const { t } = useLanguage();
   const [menuOpen, setMenuOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
@@ -83,12 +85,17 @@ export function Header() {
     <div className="flex items-center gap-3">
       <button
         onClick={() => { setProfileOpen(true); setMenuOpen(false); }}
-        className="flex items-center gap-2 hover:opacity-80 transition"
+        className="flex items-center gap-2.5 hover:opacity-80 transition"
       >
-        <Avatar avatar={user.avatar} size={32} />
+        <Avatar avatar={user.avatar} size={44} />
         <span className="text-sm text-gray-500 hidden sm:inline">
           {user.name}{' '}
           <span className="text-xs bg-indigo-50 text-indigo-700 px-1.5 py-0.5 rounded">{ROLE_LABELS[user.role]}</span>
+          {loyalty && (
+            <span className="text-xs bg-amber-50 text-amber-700 px-1.5 py-0.5 rounded ml-1 font-semibold">
+              {loyalty.xp} XP
+            </span>
+          )}
         </span>
       </button>
       <button onClick={() => { logout(); setMenuOpen(false); }} className="text-sm font-medium text-gray-500 hover:text-red-600">
@@ -122,7 +129,7 @@ export function Header() {
         <div className="md:hidden flex items-center gap-2">
           {user && (
             <button onClick={() => setProfileOpen(true)} aria-label="Meu perfil">
-              <Avatar avatar={user.avatar} size={32} />
+              <Avatar avatar={user.avatar} size={40} />
             </button>
           )}
           <button

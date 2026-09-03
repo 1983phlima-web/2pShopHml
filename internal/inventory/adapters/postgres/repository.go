@@ -105,3 +105,30 @@ func (r *Repository) ExpireReservations(ctx context.Context, before time.Time) e
 	_, err := r.db.Pool.Exec(ctx, `DELETE FROM reservations WHERE expires_at < $1`, before)
 	return err
 }
+
+// ListByTenant returns every product's stock, including products that
+// have no inventory row yet (shown with quantity 0) — a LEFT JOIN so
+// sellers see their full catalog, not just tracked items.
+func (r *Repository) ListByTenant(ctx context.Context, tenantID string) ([]domain.StockItem, error) {
+	rows, err := r.db.Pool.Query(ctx, `
+		SELECT p.id, p.name, COALESCE(i.quantity, 0), COALESCE(i.reserved, 0)
+		FROM products p
+		LEFT JOIN inventory i ON i.product_id = p.id AND i.tenant_id = p.tenant_id AND i.variant_id IS NULL
+		WHERE p.tenant_id = $1
+		ORDER BY p.name ASC
+	`, tenantID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var items []domain.StockItem
+	for rows.Next() {
+		var item domain.StockItem
+		if err := rows.Scan(&item.ProductID, &item.ProductName, &item.Quantity, &item.Reserved); err != nil {
+			return nil, err
+		}
+		items = append(items, item)
+	}
+	return items, rows.Err()
+}

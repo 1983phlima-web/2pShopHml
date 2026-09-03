@@ -26,6 +26,15 @@ type Stock struct {
 	UpdatedAt time.Time `json:"updated_at"`
 }
 
+// StockItem is a Stock row enriched with the product name — used by the
+// seller's stock management panel so it doesn't need a second fetch.
+type StockItem struct {
+	ProductID   string `json:"product_id"`
+	ProductName string `json:"product_name"`
+	Quantity    int    `json:"quantity"`
+	Reserved    int    `json:"reserved"`
+}
+
 func (s *Stock) Available() int {
 	avail := s.Quantity - s.Reserved
 	if avail < 0 {

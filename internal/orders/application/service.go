@@ -57,3 +57,13 @@ func (s *Service) ListMyOrders(ctx context.Context, tenantID, customerID string,
 	}
 	return orders, nil
 }
+
+// ListAllOrders returns every order in the tenant — the seller/admin
+// fulfillment queue (as opposed to ListMyOrders, which is customer-scoped).
+func (s *Service) ListAllOrders(ctx context.Context, tenantID string, limit, offset int) ([]*domain.Order, error) {
+	orders, err := s.repo.ListByTenant(ctx, tenantID, limit, offset)
+	if err != nil {
+		return nil, errors.Wrap(errors.ErrInternal, "failed to list all orders", err)
+	}
+	return orders, nil
+}

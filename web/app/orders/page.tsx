@@ -31,6 +31,33 @@ const STATUS_LABELS: Record<string, string> = {
   REFUNDED: 'Reembolsado',
 };
 
+const FLOW = ['PENDING', 'CONFIRMED', 'SHIPPED', 'DELIVERED'];
+
+function StatusStepper({ status }: { status: string }) {
+  const idx = FLOW.indexOf(status);
+  if (idx === -1) {
+    return (
+      <span className="text-xs font-medium bg-gray-100 text-gray-600 px-2 py-1 rounded">
+        {STATUS_LABELS[status] || status}
+      </span>
+    );
+  }
+  return (
+    <div className="flex items-center gap-1.5">
+      {FLOW.map((s, i) => (
+        <div key={s} className="flex items-center gap-1.5">
+          <div
+            className={`h-2 w-2 rounded-full ${i <= idx ? 'brand-bg' : 'bg-gray-200'}`}
+            title={STATUS_LABELS[s]}
+          />
+          {i < FLOW.length - 1 && <div className={`h-0.5 w-4 ${i < idx ? 'brand-bg' : 'bg-gray-200'}`} />}
+        </div>
+      ))}
+      <span className="text-xs font-medium text-gray-500 ml-1">{STATUS_LABELS[status]}</span>
+    </div>
+  );
+}
+
 function ExchangeForm({ orderId, productId, onDone }: { orderId: string; productId: string; onDone: () => void }) {
   const [reason, setReason] = useState('');
   const [submitting, setSubmitting] = useState(false);
@@ -116,14 +143,12 @@ export default function OrdersPage() {
         <div className="space-y-4">
           {orders.map((order) => (
             <div key={order.id} className="bg-white p-5 rounded-xl border border-gray-100">
-              <div className="flex justify-between items-start mb-3">
+              <div className="flex justify-between items-start mb-4">
                 <div>
                   <p className="text-xs text-gray-400">Pedido</p>
                   <p className="font-mono text-sm">{order.id}</p>
                 </div>
-                <span className="text-xs font-medium bg-indigo-50 text-indigo-700 px-2 py-1 rounded">
-                  {STATUS_LABELS[order.status] || order.status}
-                </span>
+                <StatusStepper status={order.status} />
               </div>
               <ul className="space-y-2 mb-3">
                 {order.items.map((item, i) => {

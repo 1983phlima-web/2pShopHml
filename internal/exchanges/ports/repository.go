@@ -9,4 +9,6 @@ import (
 type Repository interface {
 	Create(ctx context.Context, e *domain.ExchangeRequest) error
 	ListByUser(ctx context.Context, tenantID, userID string, limit, offset int) ([]*domain.ExchangeRequest, error)
+	ListByTenant(ctx context.Context, tenantID string, limit, offset int) ([]*domain.ExchangeRequest, error)
+	UpdateStatus(ctx context.Context, tenantID, id string, status domain.Status) error
 }
