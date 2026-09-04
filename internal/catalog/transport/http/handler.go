@@ -24,6 +24,7 @@ func NewHandler(service *application.Service) *Handler {
 // PublicRoutes: browsing the catalog requires no authentication.
 func (h *Handler) PublicRoutes(r chi.Router) {
 	r.Get("/products", h.List)
+	r.Get("/products/facets", h.Facets)
 	r.Get("/products/{id}", h.Get)
 }
 
@@ -87,14 +88,34 @@ func (h *Handler) List(w http.ResponseWriter, r *http.Request) {
 	q := r.URL.Query()
 	params := pagination.FromQuery(q.Get("cursor"), q.Get("limit"), q.Get("sort"), q.Get("order"))
 	offset, _ := strconv.Atoi(q.Get("offset"))
+	minPrice, _ := strconv.ParseInt(q.Get("min_price"), 10, 64)
+	maxPrice, _ := strconv.ParseInt(q.Get("max_price"), 10, 64)
 
-	products, err := h.service.ListActive(r.Context(), tenantID, params.Limit, offset)
+	filter := domain.ListFilter{
+		Query:        q.Get("q"),
+		CategorySlug: q.Get("category"),
+		Brand:        q.Get("brand"),
+		Gender:       q.Get("gender"),
+		MinPrice:     minPrice,
+		MaxPrice:     maxPrice,
+	}
+
+	products, total, err := h.service.ListFiltered(r.Context(), tenantID, filter, params.Limit, offset)
 	if err != nil {
 		respondError(w, err)
 		return
 	}
-	total, _ := h.service.CountActive(r.Context(), tenantID)
 	respondJSON(w, http.StatusOK, listResponse{Data: products, Total: total})
+}
+
+func (h *Handler) Facets(w http.ResponseWriter, r *http.Request) {
+	tenantID := httpmw.TenantFromContext(r.Context())
+	facets, err := h.service.GetFacets(r.Context(), tenantID)
+	if err != nil {
+		respondError(w, err)
+		return
+	}
+	respondJSON(w, http.StatusOK, facets)
 }
 
 func respondJSON(w http.ResponseWriter, status int, data any) {

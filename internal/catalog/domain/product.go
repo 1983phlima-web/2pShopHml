@@ -38,6 +38,33 @@ type SEO struct {
 	Keywords    string `json:"keywords"`
 }
 
+// ListFilter captures the vitrine's filter bar: free-text search,
+// category (by slug), brand, gender, and a price range — mirroring the
+// filter set from the reference application's catalog.
+type ListFilter struct {
+	State        PublicationState
+	Query        string
+	CategorySlug string
+	Brand        string
+	Gender       string
+	MinPrice     int64
+	MaxPrice     int64
+}
+
+// Facets lists the distinct filter values actually present in the
+// tenant's catalog, so the frontend's dropdowns are always accurate —
+// never a hardcoded guess.
+type Facets struct {
+	Categories []FacetOption `json:"categories"`
+	Brands     []string      `json:"brands"`
+	Genders    []string      `json:"genders"`
+}
+
+type FacetOption struct {
+	Slug string `json:"slug"`
+	Name string `json:"name"`
+}
+
 func NewProduct(tenantID, name, slug, sku string, price int64) *Product {
 	now := time.Now().UTC()
 	return &Product{

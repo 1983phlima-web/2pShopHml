@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
 import { ProductCard, Product } from '@/components/ProductCard';
+import { Footer } from '@/components/Footer';
 import { useAuth } from '@/components/AuthContext';
 import { roleHomePath } from '@/lib/auth';
 import { api } from '@/lib/api';
@@ -199,6 +200,8 @@ export default function HomePage() {
           ))}
         </div>
       </section>
+
+      <Footer />
     </div>
   );
 }

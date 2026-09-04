@@ -74,3 +74,26 @@ func (s *Service) ListActive(ctx context.Context, tenantID string, limit, offset
 func (s *Service) CountActive(ctx context.Context, tenantID string) (int, error) {
 	return s.repo.CountByTenant(ctx, tenantID)
 }
+
+// ListFiltered powers the vitrine's filter bar. State is always pinned
+// to ACTIVE — filters never let a shopper see draft/archived products.
+func (s *Service) ListFiltered(ctx context.Context, tenantID string, filter domain.ListFilter, limit, offset int) ([]*domain.Product, int, error) {
+	filter.State = domain.StateActive
+	products, err := s.repo.ListFiltered(ctx, tenantID, filter, limit, offset)
+	if err != nil {
+		return nil, 0, errors.Wrap(errors.ErrInternal, "failed to list filtered products", err)
+	}
+	total, err := s.repo.CountFiltered(ctx, tenantID, filter)
+	if err != nil {
+		return nil, 0, errors.Wrap(errors.ErrInternal, "failed to count filtered products", err)
+	}
+	return products, total, nil
+}
+
+func (s *Service) GetFacets(ctx context.Context, tenantID string) (domain.Facets, error) {
+	facets, err := s.repo.GetFacets(ctx, tenantID)
+	if err != nil {
+		return domain.Facets{}, errors.Wrap(errors.ErrInternal, "failed to load facets", err)
+	}
+	return facets, nil
+}

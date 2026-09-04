@@ -3,6 +3,8 @@ package postgres
 import (
 	"context"
 	"encoding/json"
+	"fmt"
+	"strings"
 
 	"github.com/2pshop/2pshop/internal/catalog/domain"
 	"github.com/2pshop/2pshop/internal/catalog/ports"
@@ -112,4 +114,145 @@ func (r *Repository) CountByTenant(ctx context.Context, tenantID string) (int, e
 	var count int
 	err := r.db.Pool.QueryRow(ctx, `SELECT COUNT(*) FROM products WHERE tenant_id=$1`, tenantID).Scan(&count)
 	return count, err
+}
+
+// buildFilterWhere constructs the WHERE clause + args shared by
+// ListFiltered and CountFiltered, so both stay in sync. Always joins
+// categories (LEFT JOIN) so a category-slug filter can be applied.
+func buildFilterWhere(tenantID string, filter domain.ListFilter) (string, []any) {
+	conditions := []string{"p.tenant_id = $1"}
+	args := []any{tenantID}
+	arg := func(v any) string {
+		args = append(args, v)
+		return fmt.Sprintf("$%d", len(args))
+	}
+
+	if filter.State != "" {
+		conditions = append(conditions, "p.state = "+arg(filter.State))
+	}
+	if filter.Query != "" {
+		conditions = append(conditions, "(p.name ILIKE "+arg("%"+filter.Query+"%")+" OR p.description ILIKE "+arg("%"+filter.Query+"%")+" OR p.attributes->>'brand' ILIKE "+arg("%"+filter.Query+"%")+")")
+	}
+	if filter.CategorySlug != "" {
+		conditions = append(conditions, "c.slug = "+arg(filter.CategorySlug))
+	}
+	if filter.Brand != "" {
+		conditions = append(conditions, "p.attributes->>'brand' = "+arg(filter.Brand))
+	}
+	if filter.Gender != "" {
+		conditions = append(conditions, "p.attributes->>'gender' = "+arg(filter.Gender))
+	}
+	if filter.MinPrice > 0 {
+		conditions = append(conditions, "p.price >= "+arg(filter.MinPrice))
+	}
+	if filter.MaxPrice > 0 {
+		conditions = append(conditions, "p.price <= "+arg(filter.MaxPrice))
+	}
+
+	return strings.Join(conditions, " AND "), args
+}
+
+func (r *Repository) ListFiltered(ctx context.Context, tenantID string, filter domain.ListFilter, limit, offset int) ([]*domain.Product, error) {
+	where, args := buildFilterWhere(tenantID, filter)
+	args = append(args, limit, offset)
+	query := `SELECT ` + prefixedCols("p") + ` FROM products p LEFT JOIN categories c ON c.id = p.category_id
+		WHERE ` + where + fmt.Sprintf(" ORDER BY p.created_at DESC LIMIT $%d OFFSET $%d", len(args)-1, len(args))
+
+	rows, err := r.db.Pool.Query(ctx, query, args...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var products []*domain.Product
+	for rows.Next() {
+		p, err := r.scan(rows)
+		if err != nil {
+			return nil, err
+		}
+		products = append(products, p)
+	}
+	return products, rows.Err()
+}
+
+func (r *Repository) CountFiltered(ctx context.Context, tenantID string, filter domain.ListFilter) (int, error) {
+	where, args := buildFilterWhere(tenantID, filter)
+	query := `SELECT COUNT(*) FROM products p LEFT JOIN categories c ON c.id = p.category_id WHERE ` + where
+	var count int
+	err := r.db.Pool.QueryRow(ctx, query, args...).Scan(&count)
+	return count, err
+}
+
+// GetFacets returns the distinct category/brand/gender values actually
+// present in the active catalog, so filter dropdowns are always accurate.
+func (r *Repository) GetFacets(ctx context.Context, tenantID string) (domain.Facets, error) {
+	var facets domain.Facets
+
+	catRows, err := r.db.Pool.Query(ctx, `
+		SELECT DISTINCT c.slug, c.name
+		FROM products p JOIN categories c ON c.id = p.category_id
+		WHERE p.tenant_id = $1 AND p.state = 'ACTIVE'
+		ORDER BY c.name
+	`, tenantID)
+	if err != nil {
+		return facets, err
+	}
+	for catRows.Next() {
+		var o domain.FacetOption
+		if err := catRows.Scan(&o.Slug, &o.Name); err != nil {
+			catRows.Close()
+			return facets, err
+		}
+		facets.Categories = append(facets.Categories, o)
+	}
+	catRows.Close()
+
+	brandRows, err := r.db.Pool.Query(ctx, `
+		SELECT DISTINCT attributes->>'brand' FROM products
+		WHERE tenant_id = $1 AND state = 'ACTIVE' AND COALESCE(attributes->>'brand', '') <> ''
+		ORDER BY 1
+	`, tenantID)
+	if err != nil {
+		return facets, err
+	}
+	for brandRows.Next() {
+		var b string
+		if err := brandRows.Scan(&b); err != nil {
+			brandRows.Close()
+			return facets, err
+		}
+		facets.Brands = append(facets.Brands, b)
+	}
+	brandRows.Close()
+
+	genderRows, err := r.db.Pool.Query(ctx, `
+		SELECT DISTINCT attributes->>'gender' FROM products
+		WHERE tenant_id = $1 AND state = 'ACTIVE' AND COALESCE(attributes->>'gender', '') <> ''
+		ORDER BY 1
+	`, tenantID)
+	if err != nil {
+		return facets, err
+	}
+	for genderRows.Next() {
+		var g string
+		if err := genderRows.Scan(&g); err != nil {
+			genderRows.Close()
+			return facets, err
+		}
+		facets.Genders = append(facets.Genders, g)
+	}
+	genderRows.Close()
+
+	return facets, nil
+}
+
+// prefixedCols renders selectCols with a table alias prefix, needed once
+// ListFiltered/CountFiltered introduced a join (bare column names would
+// become ambiguous between products and categories).
+func prefixedCols(alias string) string {
+	cols := strings.Split(selectCols, ", ")
+	for i, c := range cols {
+		cols[i] = alias + "." + c
+	}
+	return strings.Join(cols, ", ")
 }
